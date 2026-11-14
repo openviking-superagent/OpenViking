@@ -35,6 +35,20 @@ OpenViking supports various resource types, categorized by functionality:
 | Git Code Hosting Platform | `https://github.com/{org}/{repo}` | URLs from GitHub, GitLab, Bitbucket and other code hosting platforms |
 | Raw Files from Git Hosting | `https://github.com/{org}/{repo}/raw/{branch}/{path}` | Raw file download URLs from GitHub, GitLab, Bitbucket and other platforms |
 
+**MATLAB / Simulink joint projects**
+
+| Type | Extensions | Description |
+|------|------------|-------------|
+| Simulink model | `.slx` | Reads system XML directly from the ZIP container. Each subsystem becomes a nested `index.md` with ports, block parameters, a Mermaid signal graph, and a connection table |
+| Simulink data dictionary | `.sldd` | Extracts entry names, object types, dimensions, data types, values/conditions, and dictionary references |
+| MATLAB data | `.mat` | Reads v5/v7 array metadata and bounded previews through SciPy, and v7.3 through HDF5/h5py; never executes stored objects |
+| Live Script / code | `.mlx`, `.m` | Extracts MLX prose, headings, and code; preserves complete M source and identifies function declarations |
+| MATLAB P-code | `.p` | Preserves the original with a SHA-256 boundary page; visible to dependency compilation without inventing internal logic |
+
+Install `openviking[matlab]` and import a project directory normally, for example `ov add-resource ./tests/matlab_repos/DRLHevIps5_4 --to viking://resources/DRLHevIps5_4 --wait`. The repository's `resources/simulink-block-library/` can be imported separately as a local standard Simulink block knowledge base: 341 entries in the official R2025b 20 categories and 341 family-specific documents backed by 333 distinct documentation paths containing official purposes, libraries, ports, parameters, characteristics, and version history, with no external URLs. Install `openviking[matlab-docs]` and run `python scripts/matlab/scrape_simulink_blocks.py` to refresh it. Directory names match the MathWorks R2025b Blocks category list, and renamed or merged blocks record their actual documentation relationship in `documentation_page`. During SLX ingestion, original `BlockType` / `SourceBlock` values select local templates whose purpose, library, ports, and parameter documentation are inlined into the owning subsystem `index.md`; generic templates never overwrite instance parameters. The catalog is part of the ingestion pipeline, not merely a standalone versioned knowledge display. External Toolbox `SourceBlock` paths are retained and are not presented as locally implemented subsystems. Stateflow state hierarchy, actions, and transitions are emitted as `stateflow_<chart-id>.md` beside the owning subsystem. MATLAB Function internals and P-code still require dedicated parsers.
+
+After adding the `matlab-simulink` example Skill, run `ov compile --from viking://resources/DRLHevIps5_4 --to viking://resources/DRLHevIps5_4-patterns --skill viking://agent/skills/matlab-simulink` to compile evidence-backed filtering, fault-encoding, mode-control, and energy-management patterns. Deterministic parsing does not claim to reproduce dynamic simulation.
+
 **Media**
 
 | Type | Resource Name | Description |
