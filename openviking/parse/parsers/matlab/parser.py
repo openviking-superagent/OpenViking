@@ -64,6 +64,9 @@ class MatlabParser(BaseParser):
                         "## 子系统", section + "## 子系统", 1
                     )
                 root_dir = path.stem
+                await writer.write_bytes(
+                    f"{root_dir}/{path.name}", await asyncio.to_thread(path.read_bytes)
+                )
                 for name, content in documents.items():
                     await writer.write_text(f"{root_dir}/{name}", content)
                 await writer.write_text(
@@ -78,6 +81,7 @@ class MatlabParser(BaseParser):
                     "stateflow_chart_count": len(charts),
                     "stateflow_state_count": sum(len(chart.states) for chart in charts),
                     "stateflow_transition_count": sum(len(chart.transitions) for chart in charts),
+                    "original_preserved": True,
                 }
                 title = path.stem
             elif suffix == ".p":
@@ -98,8 +102,14 @@ class MatlabParser(BaseParser):
                     content = await asyncio.to_thread(parse_m_file, path)
                 else:
                     raise ValueError(f"Unsupported MATLAB extension: {suffix}")
-                await writer.write_text(f"{path.stem}.md", content)
-                meta = {"matlab_format": suffix.removeprefix(".")}
+                # Include the suffix in generated names so same-stem files such as
+                # Eng_param.m and Eng_param.mat cannot overwrite each other's pages.
+                await writer.write_text(f"{path.name}.md", content)
+                await writer.write_bytes(path.name, await asyncio.to_thread(path.read_bytes))
+                meta = {
+                    "matlab_format": suffix.removeprefix("."),
+                    "original_preserved": True,
+                }
                 title = path.stem
 
             root = ResourceNode(type=NodeType.ROOT, title=title, level=0)

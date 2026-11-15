@@ -1,12 +1,14 @@
 # Copyright (c) 2026 Beijing Volcano Engine Technology Co., Ltd.
 # SPDX-License-Identifier: AGPL-3.0
 
+import zipfile
 from pathlib import Path
 
 import pytest
 
 from openviking.parse.output import LocalParseOutputStore
 from openviking.parse.parsers.directory import DirectoryParser
+from openviking.parse.parsers.matlab._zip import read_xml_member
 from openviking.parse.parsers.matlab.catalog import find_block
 from openviking.parse.parsers.matlab.mat import parse_mat
 from openviking.parse.parsers.matlab.parser import MatlabParser
@@ -108,6 +110,26 @@ def test_sldd_entries_dimensions_types_and_references():
     assert "`VehCong.sldd`" in content
     assert "共提取 **4** 个条目" in content
 
+    config = parse_sldd(SAMPLE / "VehCong.sldd")
+    assert config.count("SolverName=ode4") == 1  # ConfigSet fields must not be duplicated.
+
+
+def test_slx_rejects_missing_model_root(tmp_path):
+    path = tmp_path / "invalid.slx"
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("simulink/blockdiagram.xml", "<BlockDiagram />")
+    with pytest.raises(ValueError, match="no model root System"):
+        parse_slx(path)
+
+
+def test_zip_xml_member_limit(tmp_path):
+    path = tmp_path / "oversized.slx"
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("simulink/blockdiagram.xml", b"x" * 17)
+    with zipfile.ZipFile(path) as archive:
+        with pytest.raises(ValueError, match="16-byte XML safety limit"):
+            read_xml_member(archive, "simulink/blockdiagram.xml", max_bytes=16)
+
 
 def test_mat_v73_hdf5_metadata_and_preview(tmp_path):
     h5py = pytest.importorskip("h5py")
@@ -173,12 +195,28 @@ async def test_whole_joint_project_upload_including_p_code(tmp_path):
 
     assert result.warnings == []
     assert len(list(root.rglob("index.md"))) == 86
-    assert (root / "DRLHevIps5_4" / "DriveCycle" / "WLTC.md").is_file()
-    assert (root / "DRLHevIps5_4" / "RunSACEMS.md").is_file()
+    assert (root / "DRLHevIps5_4" / "DriveCycle" / "WLTC.mat.md").is_file()
+    assert (root / "DRLHevIps5_4" / "RunSACEMS.mlx.md").is_file()
+    # Same-stem source files need separate generated pages.
+    assert (root / "DRLHevIps5_4" / "Eng" / "Eng_param.m.md").stat().st_size > 250_000
+    assert "P_max_kW" in (root / "DRLHevIps5_4" / "Eng" / "Eng_param.mat.md").read_text(
+        encoding="utf-8"
+    )
     # P-code remains opaque, but both its original bytes and a compilable boundary page exist.
     pcode = root / "DRLHevIps5_4" / "VCU_Mode_Change"
     assert (pcode / "VCU_Mode_Change.p").read_bytes() == (SAMPLE / "VCU_Mode_Change.p").read_bytes()
     assert "parse_status: opaque" in (pcode / "index.md").read_text(encoding="utf-8")
+
+    # Parsing must not discard the only complete copy of a model, array or script.
+    sources = [path for path in SAMPLE.rglob("*") if path.is_file()]
+    assert len(sources) == 23
+    for source in sources:
+        relative = source.relative_to(SAMPLE)
+        if source.suffix.lower() in {".slx", ".p"}:
+            original = root / "DRLHevIps5_4" / relative.parent / source.stem / source.name
+        else:
+            original = root / "DRLHevIps5_4" / relative
+        assert original.read_bytes() == source.read_bytes(), relative
 
 
 def test_registry_routes_all_matlab_extensions():
@@ -190,6 +228,12 @@ def test_registry_routes_all_matlab_extensions():
 def test_standard_library_and_external_library_matching():
     assert find_block("Logic") == ("logic-and-bit-operations", "Logical Operator")
     assert find_block("Reference", "autolibdcdc/Bidirectional DC-DC") is None
+    assert find_block("Display", "simulink/Sinks/Display") == ("sinks", "Display")
+    assert find_block("Inport", "simulink/Sources/Inport") == ("sources", "Inport")
+    assert find_block("MatrixConcatenate", "simulink/Matrix Operations/Matrix Concatenate") == (
+        "matrix-operations",
+        "Matrix Concatenate",
+    )
 
 
 def test_scraped_block_knowledge_is_local_and_complete():

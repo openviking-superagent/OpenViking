@@ -9,6 +9,8 @@ from pathlib import Path
 
 from defusedxml import ElementTree as ET
 
+from openviking.parse.parsers.matlab._zip import read_xml_member
+
 
 def _props(element) -> dict[str, object]:
     return {p.get("Name"): p for p in element.findall("./P") if p.get("Name")}
@@ -71,7 +73,7 @@ def parse_sldd(path: str | Path) -> str:
             chunks = sorted(
                 n for n in archive.namelist() if n.startswith("data/") and n.endswith(".xml")
             )
-            roots = [ET.fromstring(archive.read(name)) for name in chunks]
+            roots = [ET.fromstring(read_xml_member(archive, name)) for name in chunks]
     except zipfile.BadZipFile as exc:
         raise ValueError(f"Not a valid SLDD archive: {path.name}") from exc
     if not roots:
@@ -119,11 +121,15 @@ def parse_sldd(path: str | Path) -> str:
             dimension = _dimension(element, inner)
             description = _value(inner.get("Description")) or "-"
             extra = _details(inner)
-            rendered_value = (
-                _value(inner.get("Value")) or _value(inner.get("Condition")) or _value(value)
-            )
-            if extra:
-                rendered_value += ("; " if rendered_value else "") + extra
+            direct_value = _value(inner.get("Value")) or _value(inner.get("Condition"))
+            if direct_value:
+                rendered_value = direct_value
+                if extra:
+                    rendered_value += "; " + extra
+            else:
+                # _value(value) already includes every field in ``inner``. Adding
+                # ``extra`` here duplicated large ConfigSet values almost twice.
+                rendered_value = _value(value)
             cells = [name, object_type, dimension, data_type, rendered_value or "-", description]
             cells = [c.replace("|", "\\|").replace("\r", "").replace("\n", "<br>") for c in cells]
             lines.append("| " + " | ".join(cells) + " |")

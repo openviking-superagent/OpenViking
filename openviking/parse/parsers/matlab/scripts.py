@@ -11,6 +11,8 @@ from pathlib import Path
 
 from defusedxml import ElementTree as ET
 
+from openviking.parse.parsers.matlab._zip import read_xml_member
+
 _W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 
 
@@ -18,7 +20,7 @@ def parse_mlx(path: str | Path) -> str:
     path = Path(path)
     try:
         with zipfile.ZipFile(path) as archive:
-            document = ET.fromstring(archive.read("matlab/document.xml"))
+            document = ET.fromstring(read_xml_member(archive, "matlab/document.xml"))
     except zipfile.BadZipFile as exc:
         raise ValueError(f"Not a valid MLX archive: {path.name}") from exc
     except KeyError as exc:

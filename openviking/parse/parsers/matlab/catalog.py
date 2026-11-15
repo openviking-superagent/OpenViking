@@ -51,8 +51,21 @@ def _normalize(value: str) -> str:
 def find_block(block_type: str, source_block: str = "") -> tuple[str, str] | None:
     """Resolve an SLX BlockType or library basename to an official category/page."""
     candidates = [source_block.rsplit("/", 1)[-1], _ALIASES.get(block_type, ""), block_type]
-    # Commonly Used Blocks duplicates canonical categories; prefer the latter.
-    families = sorted(_CATALOG.items(), key=lambda item: item[0] == "commonly-used-blocks")
+    category_by_name = {_normalize(title): family for family, title in _CATEGORY_TITLES.items()}
+    source_families = {
+        category_by_name[_normalize(part)]
+        for part in source_block.split("/")[:-1]
+        if _normalize(part) in category_by_name
+    }
+    # Use the original library path to distinguish duplicate names such as
+    # Sinks/Display from Dashboard/Display. Fall back for renamed libraries.
+    families = sorted(
+        _CATALOG.items(),
+        key=lambda item: (
+            bool(source_families) and item[0] not in source_families,
+            item[0] == "commonly-used-blocks",
+        ),
+    )
     for candidate in candidates:
         normalized = _normalize(candidate)
         for family, names in families:

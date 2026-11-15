@@ -11,6 +11,8 @@ from pathlib import Path
 
 from defusedxml import ElementTree as ET
 
+from openviking.parse.parsers.matlab._zip import read_xml_member
+
 
 @dataclass
 class State:
@@ -71,7 +73,7 @@ def parse_stateflow(path: str | Path) -> list[Chart]:
             if n.startswith("simulink/stateflow/chart_") and n.endswith(".xml")
         )
         for name in names:
-            root = ET.fromstring(archive.read(name))
+            root = ET.fromstring(read_xml_member(archive, name))
             props = _props(root)
             chart = Chart(
                 chart_id=root.get("id", Path(name).stem.removeprefix("chart_")),

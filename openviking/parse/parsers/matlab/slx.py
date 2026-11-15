@@ -12,6 +12,7 @@ from typing import Iterable
 
 from defusedxml import ElementTree as ET
 
+from openviking.parse.parsers.matlab._zip import read_xml_member
 from openviking.parse.parsers.matlab.catalog import find_block
 from openviking.parse.parsers.matlab.templates import render_block_template
 
@@ -73,11 +74,11 @@ def parse_slx(path: str | Path) -> System:
         root_xml = _archive_xml(archive, "simulink/blockdiagram.xml")
         model = root_xml.find("./Model")
         root_ref_element = model.find("./System") if model is not None else None
-        root_ref = (
-            root_ref_element.get("Ref", "system_root")
-            if root_ref_element is not None
-            else "system_root"
-        )
+        if root_ref_element is None:
+            raise ValueError(f"SLX archive has no model root System: {path.name}")
+        root_ref = root_ref_element.get("Ref", "")
+        if not root_ref:
+            raise ValueError(f"SLX model root System has no Ref: {path.name}")
         systems: dict[str, System] = {}
         pending: list[tuple[System, Block]] = []
 
@@ -127,7 +128,7 @@ def parse_slx(path: str | Path) -> System:
 
 def _archive_xml(archive: zipfile.ZipFile, name: str):
     try:
-        return ET.fromstring(archive.read(name))
+        return ET.fromstring(read_xml_member(archive, name))
     except KeyError as exc:
         raise ValueError(f"SLX archive is missing {name}") from exc
 
@@ -293,7 +294,7 @@ def _render_system(system: System, directory: str, is_root: bool) -> str:
         ]
     )
     rows = 0
-    block_templates: dict[str, str] = {}
+    block_templates: dict[str, tuple[str, str]] = {}
     for block in system.blocks:
         if block.block_type in {"Inport", "Outport"}:
             continue
@@ -317,7 +318,9 @@ def _render_system(system: System, directory: str, is_root: bool) -> str:
             rendered_template = render_block_template(block.block_type, block.source_block)
             if rendered_template:
                 canonical_name, template_markdown = rendered_template
-                block_templates.setdefault(canonical_name, template_markdown)
+                block_templates.setdefault(
+                    f"{family}/{canonical_name}", (canonical_name, template_markdown)
+                )
         lines.append(f"| {_cell(block.name)} | {source} | {block.sid} | {param_text or '-'} |")
         rows += 1
     if not rows:
@@ -333,7 +336,7 @@ def _render_system(system: System, directory: str, is_root: bool) -> str:
                 "同名块只展开一次，各实例自己的配置仍以上表为准。",
             ]
         )
-        for canonical_name, template_markdown in block_templates.items():
+        for canonical_name, template_markdown in block_templates.values():
             lines.extend(["", f"### {canonical_name}", "", template_markdown, ""])
 
     lines.extend(["", "## 信号逻辑流程图", "", "```mermaid", "flowchart LR"])
