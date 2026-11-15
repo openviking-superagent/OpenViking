@@ -1,6 +1,7 @@
 # Copyright (c) 2026 Beijing Volcano Engine Technology Co., Ltd.
 # SPDX-License-Identifier: AGPL-3.0
 
+import json
 import zipfile
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from openviking.parse.output import LocalParseOutputStore
 from openviking.parse.parsers.directory import DirectoryParser
 from openviking.parse.parsers.matlab._zip import read_xml_member
 from openviking.parse.parsers.matlab.catalog import find_block
+from openviking.parse.parsers.matlab.formats import parse_additional
 from openviking.parse.parsers.matlab.mat import parse_mat
 from openviking.parse.parsers.matlab.parser import MatlabParser
 from openviking.parse.parsers.matlab.scripts import parse_m_file, parse_mlx
@@ -242,6 +244,24 @@ def test_scraped_block_knowledge_is_local_and_complete():
     assert len(documents) == 341
     assert len({path.parent.name for path in documents}) == 20
     assert not any("https://" in path.read_text(encoding="utf-8") for path in documents)
+    manifest = json.loads(
+        (
+            Path(__file__).parents[3] / "scripts" / "matlab" / "simulink-block-manifest.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert len(manifest) == 341
+    for entry in manifest:
+        family = entry["category"].lower().replace(" & ", "-").replace(" ", "-")
+        slug = "".join(
+            character if character.isalnum() else "-" for character in entry["name"].lower()
+        ).strip("-")
+        while "--" in slug:
+            slug = slug.replace("--", "-")
+        page = root / family / f"{slug}.md"
+        assert page.is_file(), entry
+        text = page.read_text(encoding="utf-8")
+        assert "documentation_release: R2025b" in text
+        assert "## Description" in text or "## Ports" in text or "## Parameters" in text
 
     logical = (root / "logic-and-bit-operations" / "logical-operator.md").read_text(
         encoding="utf-8"
@@ -270,3 +290,141 @@ def test_scraped_block_knowledge_is_local_and_complete():
     assert "# Messages & Events" in (root / "messages-events" / "index.md").read_text(
         encoding="utf-8"
     )
+
+
+def test_real_simscape_model_preserves_conserving_network_semantics():
+    path = (
+        Path(__file__).parents[2]
+        / "matlab_repos"
+        / "SimscapeBattery"
+        / "detailedThermalModel_demo.slx"
+    )
+    model = parse_slx(path)
+    assert len(model.edges) == 8
+    assert all(edge.kind == "physical-conserving" for edge in model.edges)
+    document = system_documents(model)["index.md"]
+    assert "守恒网络连接（无输入输出方向）" in document
+    assert "rconn:1 ↔ lconn:1" in document
+    assert not any("conn:" in line and "-->" in line for line in document.splitlines())
+    assert "## 模型引用与外部依赖" in document
+    assert "SimscapeComponentBlock" in document
+
+
+def _write_semantic_slx(path: Path):
+    def block(kind, name, sid, properties="", system=""):
+        return (
+            f'<Block BlockType="{kind}" Name="{name}" SID="{sid}">{properties}'
+            + (f'<System Ref="{system}"/>' if system else "")
+            + "</Block>"
+        )
+
+    root = """<System>
+      <Block BlockType="SubSystem" Name="Enabled" SID="1"><System Ref="system_1"/></Block>
+      <Block BlockType="SubSystem" Name="Variants" SID="2"><P Name="Variant">on</P><P Name="VariantControlMode">expression</P><System Ref="system_2"/></Block>
+      <Block BlockType="ConnectionPort" Name="Electrical +" SID="3"><P Name="Port">1</P><P Name="Side">Left</P><P Name="Domain">electrical</P></Block>
+      <Block BlockType="ConnectionPort" Name="Electrical -" SID="4"><P Name="Port">2</P><P Name="Side">Right</P><P Name="Domain">electrical</P></Block>
+      <Block BlockType="PMIOPort" Name="Torque" SID="5"><P Name="Port">3</P><P Name="Side">Right</P></Block>
+      <Line><P Name="Src">3#rconn:1</P><P Name="Dst">4#lconn:1</P></Line>
+    </System>"""
+    enabled = """<System><Block BlockType="EnablePort" Name="Enable" SID="11"><P Name="StatesWhenEnabling">held</P></Block>
+      <Block BlockType="TriggerPort" Name="Trigger" SID="12"><P Name="TriggerType">rising</P></Block></System>"""
+    variants = '<System><Block BlockType="SubSystem" Name="High power" SID="21"><P Name="VariantControl">V == 1</P><System Ref="system_3"/></Block></System>'
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr(
+            "simulink/blockdiagram.xml",
+            '<BlockDiagram><Model><System Ref="system_root"/></Model></BlockDiagram>',
+        )
+        for ref, xml in (("root", root), ("1", enabled), ("2", variants), ("3", "<System/>")):
+            archive.writestr(f"simulink/systems/system_{ref}.xml", xml)
+
+
+def test_subsystem_types_controls_variant_choices_and_physical_ports(tmp_path):
+    path = tmp_path / "semantic.slx"
+    _write_semantic_slx(path)
+    model = parse_slx(path)
+    documents = system_documents(model)
+    assert model.subsystem_types == ["subsystem"]
+    assert model.children[0].subsystem_types == ["enabled", "triggered"]
+    assert model.children[1].subsystem_types == ["variant"]
+    root = documents["index.md"]
+    assert "## 全模型子系统类型索引" in root
+    assert "StatesWhenEnabling" in documents["Enabled/index.md"]
+    assert "VariantControlMode" in documents["Variants/index.md"]
+    assert "VariantControl=`V == 1`" in documents["Variants/index.md"]
+    assert "| Electrical + | conserving | Left | electrical | 3 |" in root
+    assert "| Torque | conserving | Right | 未声明 | 5 |" in root
+    assert "守恒网络连接（无输入输出方向）" in root
+
+
+def test_additional_formats_text_containers_and_opaque_originals(tmp_path):
+    ssc = (
+        Path(__file__).parents[2]
+        / "matlab_repos"
+        / "SimscapeBattery"
+        / "batteryCellHeatConvection.ssc"
+    )
+    content, kind = parse_additional(ssc)
+    assert kind == "ssc"
+    assert "nodes" in content and "inputs" in content
+    assert "不归类为输入输出" in content
+
+    mdl = tmp_path / "legacy.mdl"
+    mdl.write_text('Model {\n Block {\n BlockType "Inport"\n Name "u"\n }\n}', encoding="utf-8")
+    content, kind = parse_additional(mdl)
+    assert kind == "mdl" and "| `Inport` | 1 |" in content
+
+    req = tmp_path / "requirements.slreqx"
+    with zipfile.ZipFile(req, "w") as archive:
+        archive.writestr(
+            "requirements.xml",
+            "<requirements><description>Battery shall remain below 45 C</description></requirements>",
+        )
+    content, _ = parse_additional(req)
+    assert "Battery shall remain below 45 C" in content
+    assert "requirements.xml" in content
+
+    mex = tmp_path / "solver.mexa64"
+    mex.write_bytes(b"\x7fELF-opaque")
+    content, kind = parse_additional(mex)
+    assert kind == "mexa64" and "不反汇编、不执行" in content
+
+    class_file = tmp_path / "+physics" / "@Battery" / "Battery.m"
+    class_file.parent.mkdir(parents=True)
+    class_file.write_text(
+        "classdef Battery < handle\n%% model\nmethods\nfunction obj = Battery()\nend\nend\nend\n",
+        encoding="utf-8",
+    )
+    class_doc = parse_m_file(class_file)
+    assert "matlab_kind: class" in class_doc
+    assert "MATLAB package：`physics`" in class_doc
+    assert "classdef：`Battery`，继承 `handle`" in class_doc
+    assert "类方法目录：`@Battery`" in class_doc
+
+    registry = ParserRegistry()
+    for suffix in (
+        ".mdl",
+        ".ssc",
+        ".sscp",
+        ".fig",
+        ".mlapp",
+        ".mlappinstall",
+        ".mltbx",
+        ".prj",
+        ".mlproj",
+        ".slreqx",
+        ".slmx",
+        ".mldatx",
+        ".sfx",
+        ".fmu",
+        ".tlc",
+        ".slxp",
+        ".mdlp",
+        ".slxc",
+        ".autosave",
+        ".mexa64",
+        ".mexw64",
+        ".mexmaci64",
+        ".mexmaca64",
+        ".asv",
+    ):
+        assert isinstance(registry.get_parser_for_file(f"asset{suffix}"), MatlabParser), suffix

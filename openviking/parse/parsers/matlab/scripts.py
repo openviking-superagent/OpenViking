@@ -112,8 +112,36 @@ def parse_m_file(path: str | Path) -> str:
     functions = re.findall(
         r"(?im)^\s*function\s+(?:\[[^\n=]*\]|\w+)?\s*=?\s*([A-Za-z]\w*)\s*(?:\([^\n]*\))?", content
     )
-    lines = ["---", "type: matlab-code", "---", "", f"# {path.name}", ""]
+    class_match = re.search(
+        r"(?m)^\s*classdef(?:\s*\([^)]*\))?\s+([A-Za-z]\w*)(?:\s*<\s*([^\n%]+))?",
+        content,
+    )
+    packages = [part[1:] for part in path.parent.parts if part.startswith("+")]
+    class_folders = [part[1:] for part in path.parent.parts if part.startswith("@")]
+    kind = "class" if class_match else "function" if functions else "script"
+    lines = [
+        "---",
+        "type: matlab-code",
+        f"matlab_kind: {kind}",
+        "---",
+        "",
+        f"# {path.name}",
+        "",
+    ]
+    if packages:
+        lines.extend(["MATLAB package：" + ".".join(f"`{name}`" for name in packages), ""])
+    if class_match:
+        class_name = class_match.group(1)
+        parents = class_match.group(2)
+        lines.extend(
+            [f"classdef：`{class_name}`" + (f"，继承 `{parents.strip()}`" if parents else ""), ""]
+        )
+    if class_folders:
+        lines.extend(["类方法目录：" + "、".join(f"`@{name}`" for name in class_folders), ""])
     if functions:
-        lines.extend(["函数：" + ", ".join(f"`{name}`" for name in functions), ""])
+        lines.extend(["函数 / 方法：" + ", ".join(f"`{name}`" for name in functions), ""])
+    section_count = len(re.findall(r"(?m)^\s*%%(?:\s|$)", content))
+    if section_count:
+        lines.extend([f"代码节（`%%`）：**{section_count}**", ""])
     lines.extend(["```matlab", content, "```", ""])
     return "\n".join(lines)

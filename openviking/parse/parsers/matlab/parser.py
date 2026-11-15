@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+import zipfile
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -13,6 +14,11 @@ from openviking.parse.base import NodeType, ParseResult, ResourceNode, create_pa
 from openviking.parse.output import create_parse_artifact_writer
 from openviking.parse.parsers.base_parser import BaseParser
 from openviking.parse.parsers.matlab.coverage import render_coverage
+from openviking.parse.parsers.matlab.formats import (
+    additional_extensions,
+    is_additional_format,
+    parse_additional,
+)
 from openviking.parse.parsers.matlab.mat import parse_mat
 from openviking.parse.parsers.matlab.scripts import parse_m_file, parse_mlx, parse_p_file
 from openviking.parse.parsers.matlab.sldd import parse_sldd
@@ -29,7 +35,7 @@ class MatlabParser(BaseParser):
 
     @property
     def supported_extensions(self) -> List[str]:
-        return [".slx", ".sldd", ".mlx", ".mat", ".m", ".p"]
+        return [".slx", ".sldd", ".mlx", ".mat", ".m", ".p", *additional_extensions()]
 
     async def parse(self, source: Union[str, Path], instruction: str = "", **kwargs) -> ParseResult:
         path = Path(source)
@@ -43,7 +49,7 @@ class MatlabParser(BaseParser):
         warnings: list[str] = []
         try:
             suffix = path.suffix.lower()
-            if suffix == ".slx":
+            if suffix == ".slx" or (suffix == ".mdl" and zipfile.is_zipfile(path)):
                 model = await asyncio.to_thread(parse_slx, path)
                 documents = await asyncio.to_thread(system_documents, model)
                 charts = await asyncio.to_thread(parse_stateflow, path)
@@ -74,7 +80,7 @@ class MatlabParser(BaseParser):
                 )
                 systems = list(_flatten(model))
                 meta = {
-                    "matlab_format": "slx",
+                    "matlab_format": suffix.removeprefix("."),
                     "system_count": len(systems),
                     "block_count": sum(len(system.blocks) for system in systems),
                     "subsystems": [system.name for system in systems],
@@ -100,6 +106,8 @@ class MatlabParser(BaseParser):
                     warnings.extend(mat_warnings)
                 elif suffix == ".m":
                     content = await asyncio.to_thread(parse_m_file, path)
+                elif is_additional_format(suffix):
+                    content, _ = await asyncio.to_thread(parse_additional, path)
                 else:
                     raise ValueError(f"Unsupported MATLAB extension: {suffix}")
                 # Include the suffix in generated names so same-stem files such as
