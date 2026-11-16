@@ -10,7 +10,7 @@ React + TypeScript frontend for [RFC OVSA-CONSOLE-001](https://github.com/volcen
 - Runtime, model, and effort transitions; new cognition Session confirmation.
 - Allowlisted configuration editing, validate-only probes, `If-Match`, desired/effective drift, instance process controls, setup, and persistent Operation steps.
 - Provider health and bindings, validate-only checks, write-only credential rotation, logs, diagnostics, and redacted audit entries.
-- Responsive navigation and light/dark themes.
+- Responsive navigation and light/dark themes. The sidebar reuses Web Studio's brand assets and color tokens, and collapses to a persistent Logo + icon rail on desktop.
 
 Outside explicit demo mode the UI issues GET requests only. The Shared Web allowlist still proxies only Slice A GET routes. This PR does **not** implement production owner authentication, Local Control Broker, PM2 actions, TaskManager writes, Provider secret storage, or real diagnostics.
 
