@@ -5,5 +5,5 @@ const result = spawnSync(process.execPath, ['../../node_modules/vitest/vitest.mj
   env: { ...process.env, NODE_ENV: 'test' },
 })
 if (result.status !== 0) process.exit(result.status ?? 1)
-const mock = spawnSync(process.execPath, ['--test', 'test/mock-server.test.mjs'], { stdio: 'inherit' })
+const mock = spawnSync(process.execPath, ['--test', 'test/mock-server.test.mjs', 'test/server-config.test.mjs', 'test/auth-server.test.mjs'], { stdio: 'inherit' })
 process.exit(mock.status ?? 1)

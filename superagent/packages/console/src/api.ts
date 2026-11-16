@@ -53,6 +53,7 @@ async function request<T>(path: string, instance?: string, query: Query = {}, op
     throw new ApiError('Cannot reach the local console service.', 0, 'instance_unavailable')
   }
   if (!response.ok) {
+    if (response.status === 401) window.dispatchEvent(new Event('ovsa-auth-required'))
     let code = response.status === 404 ? 'not_found' : 'request_failed'
     let message = `Console request failed (${response.status}).`
     let details = {}
@@ -150,7 +151,24 @@ function legacyActivity(value: LegacyActivity): Page<Activity> & { legacy: Legac
   }
 }
 
+export type AuthSession = { authenticationRequired: boolean; authenticated: boolean }
+
 export const api = {
+  authSession: async (): Promise<AuthSession> => {
+    try {
+      return await request<AuthSession>('/api/v1/auth/session')
+    } catch (error) {
+      // Existing Shared Web backends predate Console authentication.
+      if (error instanceof ApiError && error.status === 404) return { authenticationRequired: false, authenticated: true }
+      throw error
+    }
+  },
+  login: (rootApiKey: string) => request<AuthSession>('/api/v1/auth/login', undefined, {}, {
+    method: 'POST', body: { rootApiKey }, headers: { 'x-csrf-token': 'demo-owner' },
+  }),
+  logout: () => request<AuthSession>('/api/v1/auth/logout', undefined, {}, {
+    method: 'POST', body: {}, headers: { 'x-csrf-token': 'demo-owner' },
+  }),
   instances: () => request<InstanceList>('/api/v1/instances'),
 
   async capabilities(instance: string): Promise<Capabilities> {

@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
-import { Activity, Bot, ChevronDown, CircleGauge, ExternalLink, FileClock, KeyRound, ListChecks, Menu, Moon, PanelLeftClose, PanelLeftOpen, RefreshCw, ScrollText, Server, Settings2, ShieldCheck, Sun, Wrench, X } from 'lucide-react'
-import { api, isDemoMode } from './api'
+import { useCallback, useEffect, useState } from 'react'
+import { Activity, Bot, ChevronDown, CircleGauge, ExternalLink, FileClock, KeyRound, ListChecks, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, RefreshCw, ScrollText, Server, Settings2, ShieldCheck, Sun, Wrench, X } from 'lucide-react'
+import { api, isDemoMode, type AuthSession } from './api'
 import brandLockupDark from './assets/brand-lockup-dark.svg'
 import brandLockupLight from './assets/brand-lockup-light.svg'
 import { DemoNotice } from './components/Controls'
 import { OpenVikingMark } from './components/OpenVikingMark'
 import { ErrorState, Loading } from './components'
+import { LoginPage } from './LoginPage'
 import { useApi, useHashRoute } from './hooks'
 import { ActivityPage } from './pages/ActivityPage'
 import { AuditPage } from './pages/AuditPage'
@@ -33,6 +34,26 @@ const NAVIGATION = [
 ]
 
 export function App() {
+  const [session, setSession] = useState<AuthSession | null>(null)
+  const [error, setError] = useState<Error | null>(null)
+  const reloadSession = useCallback(() => {
+    setError(null)
+    api.authSession().then(setSession).catch((reason) => setError(reason instanceof Error ? reason : new Error('Authentication check failed.')))
+  }, [])
+  useEffect(() => {
+    reloadSession()
+    const required = () => setSession({ authenticationRequired: true, authenticated: false })
+    window.addEventListener('ovsa-auth-required', required)
+    return () => window.removeEventListener('ovsa-auth-required', required)
+  }, [reloadSession])
+
+  if (error) return <main className="auth-state"><ErrorState error={error} retry={reloadSession} /></main>
+  if (!session) return <main className="auth-state"><Loading /></main>
+  if (session.authenticationRequired && !session.authenticated) return <LoginPage onAuthenticated={setSession} />
+  return <ConsoleApp authRequired={session.authenticationRequired} onLogout={async () => { await api.logout(); setSession({ authenticationRequired: true, authenticated: false }) }} />
+}
+
+function ConsoleApp({ authRequired, onLogout }: { authRequired: boolean; onLogout: () => Promise<void> }) {
   const route = useHashRoute()
   const instances = useApi(api.instances, 'instances')
   const initialInstance = new URLSearchParams(window.location.search).get('instance')
@@ -73,7 +94,7 @@ export function App() {
       <div className="sidebar-bottom"><button className="sidebar-collapse" onClick={() => setCollapsed((value) => !value)} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>{collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}<span>{collapsed ? 'Expand sidebar' : 'Collapse sidebar'}</span></button><div className="read-only-panel"><ShieldCheck size={18} /><div><strong>{isDemoMode() ? 'Mock demo workspace' : 'Read-only console'}</strong><span>{isDemoMode() ? 'RFC slices A–D · Isolated data' : 'Slice A · No control actions'}</span></div></div><a className="legacy-link" title="Legacy activity timeline" href={`/activity?instance=${encodeURIComponent(selected)}`}><Activity size={15} /> Legacy activity timeline <ExternalLink size={12} /></a><div className="version"><span>OVSA Console</span><span>RFC 001</span></div></div>
     </aside>
     <main className="main-area">
-      <header className="topbar"><button className="mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu size={20} /></button><div className="breadcrumb"><Server size={15} /><span>{currentInstance?.label ?? selected}</span><span>/</span><strong>{route.page === 'task' ? 'Task detail' : activePage[0]?.toUpperCase() + activePage.slice(1)}</strong></div><div className="topbar-actions"><SetupInstanceButton instance={selected} /><span className="local-only"><i />{isDemoMode() ? 'Mock server' : 'Local only'}</span><button className="icon-button" aria-label="Refresh current view" title="Refresh current view" onClick={() => setRefreshKey((value) => value + 1)}><RefreshCw size={17} className={capabilities.refreshing ? 'spin' : ''} /></button><button className="icon-button" aria-label={dark ? 'Use light theme' : 'Use dark theme'} onClick={() => setDark((value) => !value)}>{dark ? <Sun size={17} /> : <Moon size={17} />}</button></div></header>
+      <header className="topbar"><button className="mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu size={20} /></button><div className="breadcrumb"><Server size={15} /><span>{currentInstance?.label ?? selected}</span><span>/</span><strong>{route.page === 'task' ? 'Task detail' : activePage[0]?.toUpperCase() + activePage.slice(1)}</strong></div><div className="topbar-actions"><SetupInstanceButton instance={selected} /><span className="local-only"><i />{isDemoMode() ? 'Mock server' : 'Local only'}</span><button className="icon-button" aria-label="Refresh current view" title="Refresh current view" onClick={() => setRefreshKey((value) => value + 1)}><RefreshCw size={17} className={capabilities.refreshing ? 'spin' : ''} /></button><button className="icon-button" aria-label={dark ? 'Use light theme' : 'Use dark theme'} onClick={() => setDark((value) => !value)}>{dark ? <Sun size={17} /> : <Moon size={17} />}</button>{authRequired && <button className="icon-button" aria-label="Log out" title="Log out" onClick={() => void onLogout()}><LogOut size={17} /></button>}</div></header>
       <div className="content" key={`${selected}:${refreshKey}`}>
         <DemoNotice />
         {instances.loading ? <Loading /> : instances.error ? <ErrorState error={instances.error} retry={instances.reload} /> : !selected ? <ErrorState error={new Error('No SuperAgent instances are configured.')} /> : capabilities.loading ? <Loading /> : capabilities.error || !capabilities.data ? <ErrorState error={capabilities.error ?? new Error('Capabilities unavailable')} retry={capabilities.reload} /> : <Page route={route} instance={selected} capabilities={capabilities.data} />}

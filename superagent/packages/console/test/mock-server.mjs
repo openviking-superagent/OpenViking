@@ -1,9 +1,11 @@
 // Isolated RFC contract demo. Never import this server into production code.
-import { createHash, randomUUID } from 'node:crypto'
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import http from 'node:http'
+import { isIP } from 'node:net'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isLoopbackHost, loadConsoleServerConfig, validateConsoleServerConfig } from './server-config.mjs'
 
 const packageDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const initialFixtures = JSON.parse(await readFile(new URL('./fixtures.json', import.meta.url), 'utf8'))
@@ -67,8 +69,42 @@ async function bodyOf(request) {
   catch { throw Object.assign(new Error('Invalid JSON body'), { status: 400, code: 'invalid_argument' }) }
 }
 
-export async function startMockServer({ port = 0, host = '127.0.0.1', publicDir = path.resolve(packageDir, '../web/public'), quiet = true } = {}) {
+export async function startMockServer({ port = 0, host = '127.0.0.1', rootApiKey, secureCookies = false, publicDir = path.resolve(packageDir, '../web/public'), quiet = true } = {}) {
+  const config = validateConsoleServerConfig({ host, port, rootApiKey, secureCookies }, { allowZero: true })
   const state = createMockState()
+  const sessions = new Map()
+  const sessionTtlMs = 12 * 60 * 60 * 1000
+  const rootKeyDigest = config.rootApiKey === undefined ? null : createHash('sha256').update(config.rootApiKey).digest()
+  const digest = (value) => createHash('sha256').update(value).digest()
+  const validRootKey = (value) => typeof value === 'string' && value.length <= 4096 && rootKeyDigest && timingSafeEqual(digest(value), rootKeyDigest)
+  const cookieToken = (request) => {
+    const cookie = request.headers.cookie
+    if (!cookie) return null
+    for (const item of cookie.split(';')) {
+      const [name, ...value] = item.trim().split('=')
+      if (name === 'ovsa_console_session') return value.join('=')
+    }
+    return null
+  }
+  const hasSession = (request) => {
+    const token = cookieToken(request)
+    if (!token || !/^[a-f0-9]{64}$/.test(token)) return false
+    const key = digest(token).toString('hex')
+    const session = sessions.get(key)
+    if (!session) return false
+    if (session.expiresAt <= Date.now()) { sessions.delete(key); return false }
+    return true
+  }
+  const authenticated = (request) => {
+    if (!config.rootApiKey) return true
+    const apiKey = request.headers['x-api-key']
+    const bearer = /^Bearer ([^\s]+)$/i.exec(request.headers.authorization || '')?.[1]
+    return validRootKey(apiKey) || validRootKey(bearer) || hasSession(request)
+  }
+  const sessionCookie = (request, token, maxAge) => {
+    const secure = config.secureCookies || request.socket.encrypted ? '; Secure' : ''
+    return `ovsa_console_session=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${secure}`
+  }
   const server = http.createServer(async (request, response) => {
     let json = (body, status = 200, headers = {}) => {
       response.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', ...headers })
@@ -77,7 +113,8 @@ export async function startMockServer({ port = 0, host = '127.0.0.1', publicDir 
     try {
       const url = new URL(request.url, `http://${request.headers.host}`)
       const pathname = url.pathname
-      if (!['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) return json(errorBody('forbidden', 'Loopback host required'), 403)
+      // IP literals and loopback names prevent DNS-rebinding hosts from reaching the listener.
+      if (!isLoopbackHost(url.hostname) && !isIP(url.hostname.replace(/^\[|\]$/g, ''))) return json(errorBody('forbidden', 'Use an IP address or loopback hostname'), 403)
       if (request.headers.origin) {
         const origin = new URL(request.headers.origin)
         if (origin.host !== request.headers.host || origin.protocol !== 'http:') return json(errorBody('forbidden', 'Cross-origin request rejected'), 403)
@@ -92,6 +129,25 @@ export async function startMockServer({ port = 0, host = '127.0.0.1', publicDir 
         response.writeHead(200, { 'content-type': asset.endsWith('.html') ? 'text/html; charset=utf-8' : asset.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/javascript; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'" })
         return response.end(content)
       }
+      if (pathname === '/api/v1/auth/session' && request.method === 'GET') {
+        return json({ authenticationRequired: Boolean(config.rootApiKey), authenticated: authenticated(request) })
+      }
+      if (pathname === '/api/v1/auth/login' || pathname === '/api/v1/auth/logout') {
+        if (request.method !== 'POST') return json(errorBody('not_found', 'API route not found'), 404)
+        if (request.headers['x-csrf-token'] !== 'demo-owner') return json(errorBody('forbidden', 'A same-origin CSRF header is required'), 403)
+        if (pathname.endsWith('/logout')) {
+          const token = cookieToken(request)
+          if (token) sessions.delete(digest(token).toString('hex'))
+          return json({ authenticationRequired: Boolean(config.rootApiKey), authenticated: false }, 200, { 'set-cookie': sessionCookie(request, '', 0) })
+        }
+        if (!config.rootApiKey) return json({ authenticationRequired: false, authenticated: true })
+        const credentials = await bodyOf(request)
+        if (!validRootKey(credentials.rootApiKey)) return json(errorBody('unauthenticated', 'Invalid root API key'), 401, { 'www-authenticate': 'Bearer' })
+        const token = randomBytes(32).toString('hex')
+        sessions.set(digest(token).toString('hex'), { expiresAt: Date.now() + sessionTtlMs })
+        return json({ authenticationRequired: true, authenticated: true }, 200, { 'set-cookie': sessionCookie(request, token, sessionTtlMs / 1000) })
+      }
+      if (!authenticated(request)) return json(errorBody('unauthenticated', 'Root API key authentication required'), 401, { 'www-authenticate': 'Bearer' })
       if (request.method !== 'GET' && request.headers['x-csrf-token'] !== 'demo-owner') return json(errorBody('forbidden', 'A same-origin CSRF header is required'), 403)
       if (request.headers['x-demo-role'] === 'viewer' && (request.method !== 'GET' || /\/(?:inputs|reports|configuration|logs)(?:\/|$)/.test(pathname))) return json(errorBody('permission_denied', 'Viewer cannot read protected content or mutate state'), 403)
       const body = request.method === 'GET' ? {} : await bodyOf(request)
@@ -185,12 +241,19 @@ export async function startMockServer({ port = 0, host = '127.0.0.1', publicDir 
       json(errorBody(error.code || 'internal_error', error.message || 'Mock request failed'), error.status || 500)
     }
   })
-  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, host, resolve) })
-  if (!quiet) console.log(`OVSA mock demo: http://${host}:${server.address().port}/?demo=1 (isolated data only)`)
+  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(config.port, config.host, resolve) })
+  if (!quiet) console.log(`OVSA mock demo: http://${isIP(config.host) === 6 ? `[${config.host}]` : config.host}:${server.address().port}/?demo=1 (isolated data only; authentication ${config.rootApiKey ? 'enabled' : 'disabled'})`)
   server.mockState = state
   return server
 }
 
 if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
-  await startMockServer({ port: Number(process.env.PORT || 3740), quiet: false })
+  const args = process.argv.slice(2)
+  let configPath = process.env.OVSA_CONSOLE_CONFIG
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] === '--config' && args[index + 1]) { configPath = args[++index]; continue }
+    throw new Error(`Unknown argument: ${args[index]}. Usage: node test/mock-server.mjs [--config path]`)
+  }
+  const config = await loadConsoleServerConfig(configPath)
+  await startMockServer({ ...config, quiet: false })
 }
