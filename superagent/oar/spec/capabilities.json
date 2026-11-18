@@ -1,0 +1,17 @@
+{
+  "version": "2026-11-18.1",
+  "capabilities": [
+    { "id": "open", "title": "Open a session", "description": "Create the runtime-native session the OAR adapter drives." },
+    { "id": "resume", "title": "Resume", "description": "Reattach to a persisted native conversation by id." },
+    { "id": "steer", "title": "Steer", "description": "Inject input into an active turn." },
+    { "id": "queue", "title": "Queue", "description": "Hold input for a later turn." },
+    { "id": "withdraw", "title": "Withdraw", "description": "Remove held input before it is sent." },
+    { "id": "images", "title": "Images", "description": "Accept image input as native content." },
+    { "id": "prepared_rotation", "title": "Prepared rotation", "description": "Prepare the next session before switching, with rollback on failure." },
+    { "id": "agent_tools", "title": "Agent tools", "description": "Serve the Core's MCP tool surface to the runtime." },
+    { "id": "usage", "title": "Usage", "description": "Report token totals and per-agent usage." },
+    { "id": "context", "title": "Context", "description": "Report context usage or a context breakdown." },
+    { "id": "native_hooks", "title": "Native hooks", "description": "Run the runtime's own lifecycle hooks." },
+    { "id": "isolation", "title": "Isolation", "description": "Keep the runtime's own OpenViking plugin out." }
+  ]
+}

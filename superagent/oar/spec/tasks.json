@@ -1,0 +1,159 @@
+{
+  "version": "2026-11-18.1",
+  "tasks": [
+    {
+      "id": "T1.0",
+      "title": "Spec, workflow entry and ownership invariants",
+      "owner_role": "planner",
+      "status": "done",
+      "depends_on": [],
+      "requirements": ["REQ-014", "REQ-015"],
+      "outputs": ["spec/", "AGENTS.md", "WORKFLOW.md", "README.md"],
+      "verify": [
+        { "cmd": ["node", "lib/spec-validate.mjs"], "expect_exit": 0 }
+      ],
+      "done_when": ["spec validates", "workflow entry documents the read order"],
+      "escalate_if": ["a requirement cannot be tested"],
+      "estimate": { "p50": 1, "p80": 2 }
+    },
+    {
+      "id": "T1.1",
+      "title": "Selector: constraints, score, determinism, stickiness",
+      "owner_role": "implementer",
+      "status": "done",
+      "depends_on": ["T1.0"],
+      "requirements": ["REQ-004", "REQ-005", "REQ-006", "REQ-007", "REQ-009", "REQ-010", "REQ-013"],
+      "outputs": ["lib/selector.mjs", "test/selector.test.mjs"],
+      "verify": [
+        { "cmd": ["node", "--test", "test/selector.test.mjs"], "expect_exit": 0 }
+      ],
+      "done_when": ["all selector cases pass", "no candidate gets a default backend"],
+      "escalate_if": ["policy becomes ambiguous"],
+      "estimate": { "p50": 2, "p80": 3 }
+    },
+    {
+      "id": "T1.2",
+      "title": "Isolation: map ovIsolation to OAR channels",
+      "owner_role": "implementer",
+      "status": "done",
+      "depends_on": ["T1.0"],
+      "requirements": ["REQ-001", "REQ-002", "REQ-003", "REQ-008", "REQ-011", "REQ-012"],
+      "outputs": ["lib/isolation.mjs", "test/isolation.test.mjs"],
+      "verify": [
+        { "cmd": ["node", "--test", "test/isolation.test.mjs"], "expect_exit": 0 }
+      ],
+      "done_when": ["every catalog runtime has a mapping or a refusal", "ownership env is asserted"],
+      "escalate_if": ["a runtime cannot express isolation through OAR"],
+      "estimate": { "p50": 1, "p80": 2 }
+    },
+    {
+      "id": "T1.3",
+      "title": "Spec validation and hashed gates",
+      "owner_role": "implementer",
+      "status": "done",
+      "depends_on": ["T1.0"],
+      "requirements": ["REQ-014", "REQ-015"],
+      "outputs": ["lib/spec-validate.mjs", "lib/gate.mjs", "test/spec-validate.test.mjs", "test/gate.test.mjs"],
+      "verify": [
+        { "cmd": ["node", "--test", "test/spec-validate.test.mjs"], "expect_exit": 0 },
+        { "cmd": ["node", "--test", "test/gate.test.mjs"], "expect_exit": 0 }
+      ],
+      "done_when": ["dangling links fail", "changed evidence fails"],
+      "escalate_if": ["a check needs a shell"],
+      "estimate": { "p50": 1, "p80": 2 }
+    },
+    {
+      "id": "T1.4",
+      "title": "Replay and the workflow runner",
+      "owner_role": "implementer",
+      "status": "done",
+      "depends_on": ["T1.1"],
+      "requirements": ["REQ-006", "REQ-014"],
+      "outputs": ["lib/replay.mjs", "lib/workflow.mjs", "test/replay.test.mjs", "test/workflow.test.mjs", "spec/fixtures/replay.json"],
+      "verify": [
+        { "cmd": ["node", "--test", "test/replay.test.mjs"], "expect_exit": 0 },
+        { "cmd": ["node", "--test", "test/workflow.test.mjs"], "expect_exit": 0 },
+        { "cmd": ["node", "lib/replay.mjs"], "expect_exit": 0 }
+      ],
+      "done_when": ["replay reports zero mismatches", "ready tasks are correct"],
+      "escalate_if": ["fixtures cannot be made deterministic"],
+      "estimate": { "p50": 1, "p80": 2 }
+    },
+    {
+      "id": "T2.1",
+      "title": "OAR adapter for claude and pi with isolation wired",
+      "owner_role": "implementer",
+      "status": "doing",
+      "depends_on": ["T1.1", "T1.2", "T1.3"],
+      "requirements": ["REQ-002", "REQ-008", "REQ-009", "REQ-012"],
+      "outputs": ["lib/adapter/session.mjs", "lib/adapter/claude.mjs", "lib/adapter/pi.mjs", "test/adapter-session.test.mjs", "test/adapter.test.mjs"],
+      "verify": [
+        { "cmd": ["node", "--test", "test/adapter-session.test.mjs"], "expect_exit": 0 },
+        { "cmd": ["node", "--test", "test/adapter.test.mjs"], "expect_exit": 0 }
+      ],
+      "done_when": ["contract cases pass with isolated launch", "no double recall or capture"],
+      "escalate_if": ["OAR cannot carry the isolation argument"],
+      "estimate": { "p50": 5, "p80": 7 }
+    },
+    {
+      "id": "T2.2",
+      "title": "Capture fallback for runtimes without hooks",
+      "owner_role": "implementer",
+      "status": "todo",
+      "depends_on": ["T2.1"],
+      "requirements": ["REQ-011"],
+      "outputs": ["lib/capture.mjs", "test/capture.test.mjs"],
+      "verify": [
+        { "cmd": ["node", "--test", "test/capture.test.mjs"], "expect_exit": 0 }
+      ],
+      "done_when": ["one turn produces one OV session turn", "aborted turns carry a status"],
+      "escalate_if": ["records cannot be folded without loss"],
+      "estimate": { "p50": 2, "p80": 3 }
+    },
+    {
+      "id": "T2.3",
+      "title": "Dark launch harness and health probe",
+      "owner_role": "implementer",
+      "status": "todo",
+      "depends_on": ["T2.1"],
+      "requirements": ["REQ-013"],
+      "outputs": ["lib/dark-launch.mjs", "test/dark-launch.test.mjs"],
+      "verify": [
+        { "cmd": ["node", "--test", "test/dark-launch.test.mjs"], "expect_exit": 0 }
+      ],
+      "done_when": ["48h report template exists", "failed opens lower health"],
+      "escalate_if": ["sandbox CLI cannot be installed"],
+      "estimate": { "p50": 2, "p80": 3 }
+    },
+    {
+      "id": "T3.1",
+      "title": "Canary and rollback drill",
+      "owner_role": "sre",
+      "status": "todo",
+      "depends_on": ["T2.3"],
+      "requirements": ["REQ-004", "REQ-010"],
+      "outputs": ["evidence/canary/report.json", "docs/RUNBOOK.md"],
+      "verify": [
+        { "cmd": ["node", "lib/workflow.mjs", "status"], "expect_exit": 0 }
+      ],
+      "done_when": ["rollback under five minutes", "zero duplicate writes"],
+      "escalate_if": ["a canary metric breaches its threshold"],
+      "estimate": { "p50": 3, "p80": 5 }
+    },
+    {
+      "id": "T3.2",
+      "title": "Review this slice and open the PR",
+      "owner_role": "reviewer",
+      "status": "done",
+      "depends_on": ["T1.4"],
+      "requirements": ["REQ-014"],
+      "outputs": ["evidence/review.json", "PR"],
+      "verify": [
+        { "cmd": ["node", "lib/workflow.mjs", "status"], "expect_exit": 0 }
+      ],
+      "done_when": ["rubric at least 3.5 with no S1/S2", "PR opened with evidence"],
+      "escalate_if": ["a reviewer finds an S1/S2"],
+      "estimate": { "p50": 1, "p80": 1 }
+    }
+  ]
+}

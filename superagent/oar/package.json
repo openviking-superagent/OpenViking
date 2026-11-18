@@ -1,0 +1,16 @@
+{
+  "name": "@ov-superagent/oar",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "OAR spec, selector, isolation mapping and gates for OpenViking SuperAgent",
+  "license": "AGPL-3.0",
+  "engines": { "node": ">=22.19.0" },
+  "scripts": {
+    "test": "node --test",
+    "spec:validate": "node lib/spec-validate.mjs",
+    "replay": "node lib/replay.mjs",
+    "workflow": "node lib/workflow.mjs",
+    "gate": "node lib/gate.mjs"
+  }
+}

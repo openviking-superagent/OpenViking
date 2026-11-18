@@ -1,0 +1,50 @@
+{
+  "version": "2026-11-18.1",
+  "runtimes": [
+    {
+      "id": "codex",
+      "native": { "status": "available", "evidence": { "level": "E1", "verifiedAt": "2026-11-18" } },
+      "oar": { "status": "pending", "evidence": { "level": "E0", "verifiedAt": "2026-11-18" }, "reason": "G0 hook probe has not run" }
+    },
+    {
+      "id": "claude",
+      "native": { "status": "available", "evidence": { "level": "E1", "verifiedAt": "2026-11-18" } },
+      "oar": { "status": "pending", "evidence": { "level": "E0", "verifiedAt": "2026-11-18" }, "reason": "settings-layer composition and hooks are unverified" }
+    },
+    {
+      "id": "pi",
+      "native": { "status": "available", "evidence": { "level": "E1", "verifiedAt": "2026-11-18" } },
+      "oar": { "status": "pending", "evidence": { "level": "E0", "verifiedAt": "2026-11-18" }, "reason": "subprocess isolation path has not been verified" }
+    },
+    {
+      "id": "opencode",
+      "native": { "status": "available", "evidence": { "level": "E1", "verifiedAt": "2026-11-18" } },
+      "oar": { "status": "pending", "evidence": { "level": "E0", "verifiedAt": "2026-11-18" }, "reason": "config-home isolation through ACP is unverified" }
+    },
+    {
+      "id": "dsh",
+      "native": { "status": "available", "evidence": { "level": "E1", "verifiedAt": "2026-11-18" } },
+      "oar": { "status": "pending", "evidence": { "level": "E0", "verifiedAt": "2026-11-18" }, "reason": "OAR creates its own acp profile; plugin isolation must be proven there" }
+    },
+    {
+      "id": "agy",
+      "native": { "status": "available", "evidence": { "level": "E1", "verifiedAt": "2026-11-18" } },
+      "oar": { "status": "pending", "evidence": { "level": "E0", "verifiedAt": "2026-11-18" }, "reason": "config-home isolation through OAR antigravity is unverified" }
+    },
+    {
+      "id": "durable",
+      "native": { "status": "available", "evidence": { "level": "E1", "verifiedAt": "2026-11-18" } },
+      "oar": { "status": "pending", "evidence": { "level": "E0", "verifiedAt": "2026-11-18" }, "reason": "pi-durable version alignment and Harness injection are open" }
+    },
+    {
+      "id": "traex",
+      "native": { "status": "available", "evidence": { "level": "E1", "verifiedAt": "2026-11-18" } },
+      "oar": { "status": "unavailable", "evidence": { "level": "E0", "verifiedAt": "2026-11-18" }, "reason": "no OAR adapter" }
+    },
+    {
+      "id": "volc",
+      "native": { "status": "available", "evidence": { "level": "E1", "verifiedAt": "2026-11-18" } },
+      "oar": { "status": "unavailable", "evidence": { "level": "E0", "verifiedAt": "2026-11-18" }, "reason": "remote runtime; host-owned memory cannot be enforced" }
+    }
+  ]
+}

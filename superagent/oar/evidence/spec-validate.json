@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "errors": [],
+  "stats": {
+    "requirements": 15,
+    "acceptance": 15,
+    "tests": 24,
+    "tasks": 10,
+    "gates": 3,
+    "capabilities": 12,
+    "runtimes": 9,
+    "requirementCoverage": 1
+  }
+}

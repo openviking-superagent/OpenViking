@@ -1,0 +1,68 @@
+{
+  "version": "2026-11-18.1",
+  "samples": [
+    {
+      "id": "balanced-oar-wins",
+      "now": "2026-11-18T00:00:00Z",
+      "request": { "runtime": "codex", "instance": "i", "agent": "a", "sessionKey": "s1", "requiredCapabilities": ["open", "resume", "steer"], "memoryOwner": "host", "multiTenant": false },
+      "candidates": [
+        { "backend": "native", "available": true, "capabilities": ["open", "resume", "steer", "queue", "usage", "context"], "isolation": { "ok": true, "tenantSafe": true }, "evidence": { "level": "E2", "verifiedAt": "2026-11-17" }, "confidence": 0.9, "health": { "openSuccessRate": 1, "turnSuccessRate": 1 }, "latency": { "p95Ms": 100, "baselineP95Ms": 100 }, "cost": { "tokensPerTurn": 1000, "baselineTokensPerTurn": 1000 }, "hostValue": 0.4, "rolloutWeight": 0.1, "defects": { "p0": 0, "p1": 0 } },
+        { "backend": "oar", "available": true, "capabilities": ["open", "resume", "steer", "queue", "usage", "context"], "isolation": { "ok": true, "tenantSafe": true }, "evidence": { "level": "E2", "verifiedAt": "2026-11-17" }, "confidence": 0.9, "health": { "openSuccessRate": 1, "turnSuccessRate": 1 }, "latency": { "p95Ms": 110, "baselineP95Ms": 100 }, "cost": { "tokensPerTurn": 1000, "baselineTokensPerTurn": 1000 }, "hostValue": 0.8, "rolloutWeight": 0.2, "defects": { "p0": 0, "p1": 0 } }
+      ],
+      "oracle": { "backend": "oar" }
+    },
+    {
+      "id": "stale-native",
+      "now": "2026-11-18T00:00:00Z",
+      "request": { "runtime": "claude", "instance": "i", "agent": "a", "sessionKey": "s2", "requiredCapabilities": ["open", "resume"], "memoryOwner": "host", "multiTenant": false },
+      "candidates": [
+        { "backend": "native", "available": true, "capabilities": ["open", "resume"], "isolation": { "ok": true, "tenantSafe": true }, "evidence": { "level": "E2", "verifiedAt": "2026-10-01" }, "confidence": 0.9, "health": { "openSuccessRate": 1, "turnSuccessRate": 1 }, "latency": { "p95Ms": 100, "baselineP95Ms": 100 }, "cost": { "tokensPerTurn": 1000, "baselineTokensPerTurn": 1000 }, "hostValue": 0.2, "rolloutWeight": 0.1, "defects": { "p0": 0, "p1": 0 } },
+        { "backend": "oar", "available": true, "capabilities": ["open", "resume"], "isolation": { "ok": true, "tenantSafe": true }, "evidence": { "level": "E2", "verifiedAt": "2026-11-17" }, "confidence": 0.9, "health": { "openSuccessRate": 1, "turnSuccessRate": 1 }, "latency": { "p95Ms": 100, "baselineP95Ms": 100 }, "cost": { "tokensPerTurn": 1000, "baselineTokensPerTurn": 1000 }, "hostValue": 0.8, "rolloutWeight": 0.2, "defects": { "p0": 0, "p1": 0 } }
+      ],
+      "oracle": { "backend": "oar" }
+    },
+    {
+      "id": "sticky-native",
+      "now": "2026-11-18T00:00:00Z",
+      "request": { "runtime": "pi", "instance": "i", "agent": "a", "sessionKey": "s3", "requiredCapabilities": ["open"], "memoryOwner": "host", "multiTenant": false },
+      "previous": { "sessionKey": "s3", "policyVersion": "2026-11-18.1", "chosen": "native" },
+      "candidates": [
+        { "backend": "native", "available": true, "capabilities": ["open"], "isolation": { "ok": true, "tenantSafe": true }, "evidence": { "level": "E2", "verifiedAt": "2026-11-17" }, "confidence": 0.9, "health": { "openSuccessRate": 1, "turnSuccessRate": 1 }, "latency": { "p95Ms": 100, "baselineP95Ms": 100 }, "cost": { "tokensPerTurn": 1000, "baselineTokensPerTurn": 1000 }, "hostValue": 0.2, "rolloutWeight": 0.1, "defects": { "p0": 0, "p1": 0 } },
+        { "backend": "oar", "available": true, "capabilities": ["open"], "isolation": { "ok": true, "tenantSafe": true }, "evidence": { "level": "E2", "verifiedAt": "2026-11-17" }, "confidence": 0.9, "health": { "openSuccessRate": 1, "turnSuccessRate": 1 }, "latency": { "p95Ms": 100, "baselineP95Ms": 100 }, "cost": { "tokensPerTurn": 1000, "baselineTokensPerTurn": 1000 }, "hostValue": 0.8, "rolloutWeight": 0.2, "defects": { "p0": 0, "p1": 0 } }
+      ],
+      "oracle": { "backend": "native" }
+    },
+    {
+      "id": "rotation-reevaluates",
+      "now": "2026-11-18T00:00:00Z",
+      "event": "session_rotation",
+      "request": { "runtime": "pi", "instance": "i", "agent": "a", "sessionKey": "s3", "requiredCapabilities": ["open"], "memoryOwner": "host", "multiTenant": false },
+      "previous": { "sessionKey": "s3", "policyVersion": "2026-11-18.1", "chosen": "native" },
+      "candidates": [
+        { "backend": "native", "available": true, "capabilities": ["open"], "isolation": { "ok": true, "tenantSafe": true }, "evidence": { "level": "E2", "verifiedAt": "2026-11-17" }, "confidence": 0.9, "health": { "openSuccessRate": 1, "turnSuccessRate": 1 }, "latency": { "p95Ms": 100, "baselineP95Ms": 100 }, "cost": { "tokensPerTurn": 1000, "baselineTokensPerTurn": 1000 }, "hostValue": 0.2, "rolloutWeight": 0.1, "defects": { "p0": 0, "p1": 0 } },
+        { "backend": "oar", "available": true, "capabilities": ["open"], "isolation": { "ok": true, "tenantSafe": true }, "evidence": { "level": "E2", "verifiedAt": "2026-11-17" }, "confidence": 0.9, "health": { "openSuccessRate": 1, "turnSuccessRate": 1 }, "latency": { "p95Ms": 100, "baselineP95Ms": 100 }, "cost": { "tokensPerTurn": 1000, "baselineTokensPerTurn": 1000 }, "hostValue": 0.8, "rolloutWeight": 0.2, "defects": { "p0": 0, "p1": 0 } }
+      ],
+      "oracle": { "backend": "oar" }
+    },
+    {
+      "id": "tenant-native",
+      "now": "2026-11-18T00:00:00Z",
+      "request": { "runtime": "opencode", "instance": "i", "agent": "a", "sessionKey": "s5", "requiredCapabilities": ["open"], "memoryOwner": "host", "multiTenant": true },
+      "candidates": [
+        { "backend": "native", "available": true, "capabilities": ["open"], "isolation": { "ok": true, "tenantSafe": true }, "evidence": { "level": "E2", "verifiedAt": "2026-11-17" }, "confidence": 0.9, "health": { "openSuccessRate": 1, "turnSuccessRate": 1 }, "latency": { "p95Ms": 100, "baselineP95Ms": 100 }, "cost": { "tokensPerTurn": 1000, "baselineTokensPerTurn": 1000 }, "hostValue": 0.4, "rolloutWeight": 0.1, "defects": { "p0": 0, "p1": 0 } },
+        { "backend": "oar", "available": true, "capabilities": ["open"], "isolation": { "ok": true, "tenantSafe": false }, "evidence": { "level": "E2", "verifiedAt": "2026-11-17" }, "confidence": 0.9, "health": { "openSuccessRate": 1, "turnSuccessRate": 1 }, "latency": { "p95Ms": 100, "baselineP95Ms": 100 }, "cost": { "tokensPerTurn": 1000, "baselineTokensPerTurn": 1000 }, "hostValue": 0.8, "rolloutWeight": 0.2, "defects": { "p0": 0, "p1": 0 } }
+      ],
+      "oracle": { "backend": "native" }
+    },
+    {
+      "id": "native-private-capability",
+      "now": "2026-11-18T00:00:00Z",
+      "request": { "runtime": "dsh", "instance": "i", "agent": "a", "sessionKey": "s6", "requiredCapabilities": ["open", "prepared_rotation"], "memoryOwner": "host", "multiTenant": false },
+      "candidates": [
+        { "backend": "native", "available": true, "capabilities": ["open", "prepared_rotation"], "isolation": { "ok": true, "tenantSafe": true }, "evidence": { "level": "E2", "verifiedAt": "2026-11-17" }, "confidence": 0.9, "health": { "openSuccessRate": 1, "turnSuccessRate": 1 }, "latency": { "p95Ms": 100, "baselineP95Ms": 100 }, "cost": { "tokensPerTurn": 1000, "baselineTokensPerTurn": 1000 }, "hostValue": 0.2, "rolloutWeight": 0.1, "defects": { "p0": 0, "p1": 0 } },
+        { "backend": "oar", "available": true, "capabilities": ["open"], "isolation": { "ok": true, "tenantSafe": true }, "evidence": { "level": "E2", "verifiedAt": "2026-11-17" }, "confidence": 0.9, "health": { "openSuccessRate": 1, "turnSuccessRate": 1 }, "latency": { "p95Ms": 100, "baselineP95Ms": 100 }, "cost": { "tokensPerTurn": 1000, "baselineTokensPerTurn": 1000 }, "hostValue": 0.8, "rolloutWeight": 0.2, "defects": { "p0": 0, "p1": 0 } }
+      ],
+      "oracle": { "backend": "native" }
+    }
+  ]
+}

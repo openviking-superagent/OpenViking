@@ -1,0 +1,61 @@
+{
+  "version": "2026-11-18.1",
+  "gates": [
+    {
+      "id": "G0",
+      "title": "Foundation: spec closes, selector and isolation are tested",
+      "status": "active",
+      "checks": [
+        { "id": "spec", "cmd": ["node", "lib/spec-validate.mjs"], "expect_exit": 0 },
+        { "id": "selector", "cmd": ["node", "--test", "test/selector.test.mjs"], "expect_exit": 0 },
+        { "id": "isolation", "cmd": ["node", "--test", "test/isolation.test.mjs"], "expect_exit": 0 },
+        { "id": "adapter-session", "cmd": ["node", "--test", "test/adapter-session.test.mjs"], "expect_exit": 0 },
+        { "id": "spec-validate", "cmd": ["node", "--test", "test/spec-validate.test.mjs"], "expect_exit": 0 },
+        { "id": "gate", "cmd": ["node", "--test", "test/gate.test.mjs"], "expect_exit": 0 },
+        { "id": "replay", "cmd": ["node", "--test", "test/replay.test.mjs"], "expect_exit": 0 },
+        { "id": "workflow", "cmd": ["node", "--test", "test/workflow.test.mjs"], "expect_exit": 0 },
+        { "id": "replay-cli", "cmd": ["node", "lib/replay.mjs"], "expect_exit": 0 }
+      ],
+      "evidence": ["evidence/G0/report.json", "evidence/spec-validate.json"],
+      "exit": [
+        "zero spec errors and full requirement coverage",
+        "all selector, isolation, gate, replay and workflow tests pass",
+        "replay reports zero mismatches"
+      ],
+      "approvers": ["runtime-integration", "qa"]
+    },
+    {
+      "id": "G1",
+      "title": "Adapters: claude and pi pass the native contract with isolation wired",
+      "status": "planned",
+      "checks": [
+        { "id": "adapter", "cmd": ["node", "--test", "test/adapter.test.mjs"], "expect_exit": 0 },
+        { "id": "capture", "cmd": ["node", "--test", "test/capture.test.mjs"], "expect_exit": 0 }
+      ],
+      "evidence": ["evidence/G1/report.json", "evidence/G1/matrix.json"],
+      "exit": [
+        "no double recall or capture",
+        "isolation mapping verified against the real CLI",
+        "matrix oar entry moves from pending to available only with E2 evidence"
+      ],
+      "approvers": ["runtime-integration", "security"]
+    },
+    {
+      "id": "G2",
+      "title": "Admission: replay, review and evidence are green",
+      "status": "planned",
+      "checks": [
+        { "id": "spec", "cmd": ["node", "lib/spec-validate.mjs"], "expect_exit": 0 },
+        { "id": "replay", "cmd": ["node", "lib/replay.mjs"], "expect_exit": 0 },
+        { "id": "g0", "cmd": ["node", "lib/gate.mjs", "G0"], "expect_exit": 0 }
+      ],
+      "evidence": ["evidence/G2/report.json", "evidence/review.json"],
+      "exit": [
+        "review rubric at least 3.5 with no dimension below 3",
+        "no open S1 or S2 findings",
+        "decision replay agreement at least 0.8"
+      ],
+      "approvers": ["tech-lead", "qa", "sre"]
+    }
+  ]
+}

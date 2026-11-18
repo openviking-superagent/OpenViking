@@ -1,0 +1,54 @@
+{
+  "review_id": "RV-2026-11-18-001",
+  "type": "R-CODE",
+  "subject": "feat/oar-workflow-spec: spec, selector, isolation, gates",
+  "spec_refs": [
+    "REQ-001",
+    "REQ-004",
+    "REQ-012",
+    "REQ-014",
+    "REQ-015"
+  ],
+  "reviewers": [
+    "agent:self-review"
+  ],
+  "independent_review": "pending: the PR reviewer performs R-CODE against spec/reviews/rubric.json",
+  "rubric": {
+    "correctness": 4,
+    "design": 4,
+    "verifiability": 4,
+    "security": 4,
+    "operability": 4,
+    "maintainability": 4
+  },
+  "weighted_score": 4,
+  "findings": [
+    {
+      "severity": "S3",
+      "area": "scope",
+      "issue": "The runtime-specific OAR adapters are not in this change; the isolation-bound opening contract is.",
+      "status": "accepted",
+      "note": "Tracked as T2.1 (doing) in spec/tasks.json; this PR is the G0 foundation slice."
+    },
+    {
+      "severity": "S3",
+      "area": "verification",
+      "issue": "Isolation is mapped but not verified against real CLIs, so every OAR candidate stays pending.",
+      "status": "accepted",
+      "note": "Intentional: the selector refuses an unproven candidate instead of degrading memory ownership."
+    },
+    {
+      "severity": "S4",
+      "area": "docs",
+      "issue": "The planning document OAR-STD-002 stays outside the repository.",
+      "status": "accepted",
+      "note": "README summarises the decisions that bind this code; no external link is required to review it."
+    }
+  ],
+  "evidence": [
+    "evidence/G0/report.json",
+    "evidence/spec-validate.json"
+  ],
+  "decision": "approved_for_pr",
+  "decided_at": "2026-11-18T20:40:00Z"
+}

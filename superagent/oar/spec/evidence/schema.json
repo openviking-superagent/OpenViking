@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openviking.ai/superagent/oar/evidence.schema.json",
+  "title": "OAR decision and evidence",
+  "$defs": {
+    "decision": {
+      "type": "object",
+      "required": ["decisionId", "ts", "decisionKey", "runtime", "policyVersion", "evidenceVersion", "candidates", "chosen", "reasonCode", "fallbackChain"],
+      "properties": {
+        "decisionId": { "type": "string", "pattern": "^dec_[a-f0-9]{16}$" },
+        "ts": { "type": "string", "format": "date-time" },
+        "decisionKey": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "runtime": { "type": "string" },
+        "policyVersion": { "type": "string" },
+        "evidenceVersion": { "type": "string" },
+        "chosen": { "enum": ["native", "oar", null] },
+        "reasonCode": { "enum": ["highest_score", "only_eligible", "sticky", "none_eligible"] },
+        "fallbackChain": { "type": "array", "items": { "enum": ["native", "oar"] } },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["backend", "eligible"],
+            "properties": {
+              "backend": { "enum": ["native", "oar"] },
+              "eligible": { "type": "boolean" },
+              "score": { "type": ["number", "null"] },
+              "constraints": { "type": "array" }
+            }
+          }
+        }
+      }
+    },
+    "gateReport": {
+      "type": "object",
+      "required": ["schema_version", "gate", "generatedAt", "ok", "checks", "hashes"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "gate": { "type": "string" },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "ok": { "type": "boolean" },
+        "checks": { "type": "array" },
+        "hashes": { "type": "object", "additionalProperties": { "type": "string", "pattern": "^[a-f0-9]{64}$" } }
+      }
+    }
+  }
+}

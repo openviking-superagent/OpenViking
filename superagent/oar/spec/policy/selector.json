@@ -1,0 +1,42 @@
+{
+  "version": "2026-11-18.1",
+  "weights": {
+    "capability": 0.25,
+    "reliability": 0.25,
+    "latency": 0.15,
+    "cost": 0.10,
+    "hostValue": 0.10,
+    "rollout": 0.15
+  },
+  "optionalCapabilities": ["usage", "context", "steer", "withdraw"],
+  "evidence": {
+    "version": "2026-11-18.1",
+    "maxAgeDays": 14,
+    "minLevel": "E2",
+    "minConfidence": 0.6
+  },
+  "constraints": {
+    "requireIsolation": true,
+    "multiTenantRequiresIsolation": true
+  },
+  "backends": {
+    "native": { "priority": 0 },
+    "oar": { "priority": 1 }
+  },
+  "rollout": {
+    "mode": "shadow",
+    "allowedBackends": ["native", "oar"],
+    "exploration": 0
+  },
+  "failover": {
+    "codex": ["native"],
+    "claude": ["native"],
+    "pi": ["native"],
+    "opencode": ["native"],
+    "dsh": ["native"],
+    "agy": ["native"],
+    "durable": ["native"],
+    "traex": ["native"],
+    "volc": ["native"]
+  }
+}
