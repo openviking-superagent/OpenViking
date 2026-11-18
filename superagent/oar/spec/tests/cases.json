@@ -260,6 +260,18 @@
         "REQ-007"
       ],
       "automation": "test/selector.test.mjs#decision record is complete"
+    },
+    {
+      "id": "TC-024",
+      "level": "L2",
+      "given": "a verified isolation catalog, an agent and an OAR backend",
+      "when": "openSessionWithIsolation opens a session",
+      "then": "the runtime receives the six ownership switches as 0 and no credential; an unverified mapping refuses before open",
+      "requirements": [
+        "REQ-011",
+        "REQ-012"
+      ],
+      "automation": "test/adapter-session.test.mjs#verified OAR carries ownership switches and no credentials"
     }
   ]
 }

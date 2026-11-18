@@ -2,7 +2,7 @@
   "schema_version": 1,
   "gate": "G0",
   "title": "Foundation: spec closes, selector and isolation are tested",
-  "generatedAt": "2026-11-18T20:41:14.011Z",
+  "generatedAt": "2026-11-18T20:43:19.869Z",
   "ok": true,
   "checks": [
     {
@@ -15,7 +15,7 @@
       "signal": null,
       "durationMs": 29,
       "ok": true,
-      "stdoutSha256": "92ca74d7b400f6d7908e84ef53f4e0ab737a439556a8cf682722037fb724773a",
+      "stdoutSha256": "e5f7001064fc1e8cc5b79472faa993c3359d940bd7659367a27a951fb778d8e3",
       "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
@@ -27,9 +27,9 @@
       ],
       "exit": 0,
       "signal": null,
-      "durationMs": 85,
+      "durationMs": 91,
       "ok": true,
-      "stdoutSha256": "821eb2d8624561ad803eff94fcac6a9737e3371b72d8121500c247421e7ff970",
+      "stdoutSha256": "5465c5a31484c20522a8de590e97729004e7652bbd267ceabaf05a8db908f967",
       "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
@@ -41,9 +41,9 @@
       ],
       "exit": 0,
       "signal": null,
-      "durationMs": 92,
+      "durationMs": 89,
       "ok": true,
-      "stdoutSha256": "6d673dad23fd02fdb1c8efff6ae341de3fddbf9de7054027868209dc9cddb1ff",
+      "stdoutSha256": "9373035a4d8868a0e46c4c46200bb47319c1ac539abcc77f0f0b90fa589b64f4",
       "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
@@ -55,9 +55,9 @@
       ],
       "exit": 0,
       "signal": null,
-      "durationMs": 81,
+      "durationMs": 84,
       "ok": true,
-      "stdoutSha256": "c118178ba88601740516c0606b143c1735618f76a5fb4510c7c1f826d88c32f2",
+      "stdoutSha256": "3c7e3fce5e0fe44fe9fd5f6db99d3b53485d6fc7da92ccd82ac2d0ae40b10fe8",
       "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
@@ -69,9 +69,9 @@
       ],
       "exit": 0,
       "signal": null,
-      "durationMs": 209,
+      "durationMs": 192,
       "ok": true,
-      "stdoutSha256": "2be01396e82b22021a4b709c77de0666405e2c2544af5c7bb428732f29e7c5d4",
+      "stdoutSha256": "a316c63d4fbb31ec37c30d021a4e7ebdb2a2a1a48888fd1ab6820d8e3eb191a7",
       "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
@@ -85,7 +85,7 @@
       "signal": null,
       "durationMs": 82,
       "ok": true,
-      "stdoutSha256": "70c521d450d0ff95b79cecc85abbd9848c9aff60ecde04cffe331464257c06e6",
+      "stdoutSha256": "ceb2a7ce7e5c683c4a36009f4d985f89b377b3732ea919c0bcf58598bd1df18e",
       "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
@@ -97,9 +97,23 @@
       ],
       "exit": 0,
       "signal": null,
-      "durationMs": 76,
+      "durationMs": 82,
       "ok": true,
-      "stdoutSha256": "e92adcdee4ab0b19fa245cec66c3398199926aa621ff5c87638eb70e492ec01b",
+      "stdoutSha256": "ee74b19fb3d251f40d1804ce17d8f8c1e1d1062ebd94ec18e14e7300f1f7c80f",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "adapter-session",
+      "cmd": [
+        "node",
+        "--test",
+        "test/adapter-session.test.mjs"
+      ],
+      "exit": 0,
+      "signal": null,
+      "durationMs": 85,
+      "ok": true,
+      "stdoutSha256": "9594207d463dff757ea23e4b94f51bc1ecf2fec668a65a042183de87f0d7bcab",
       "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
@@ -110,13 +124,13 @@
       ],
       "exit": 0,
       "signal": null,
-      "durationMs": 30,
+      "durationMs": 32,
       "ok": true,
       "stdoutSha256": "71d0fc23f720a9383cc2ea5a3a5c2b40f752e4ede923ad95cf4a09e07687ee5c",
       "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     }
   ],
   "hashes": {
-    "evidence/spec-validate.json": "92ca74d7b400f6d7908e84ef53f4e0ab737a439556a8cf682722037fb724773a"
+    "evidence/spec-validate.json": "e5f7001064fc1e8cc5b79472faa993c3359d940bd7659367a27a951fb778d8e3"
   }
 }

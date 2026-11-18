@@ -203,7 +203,8 @@
         }
       ],
       "tests": [
-        "TC-015"
+        "TC-015",
+        "TC-024"
       ],
       "owner": "ovsa"
     },
@@ -223,7 +224,8 @@
       "tests": [
         "TC-005",
         "TC-013",
-        "TC-014"
+        "TC-014",
+        "TC-024"
       ],
       "owner": "runtime-integration"
     },

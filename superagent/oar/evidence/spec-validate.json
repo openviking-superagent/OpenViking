@@ -4,7 +4,7 @@
   "stats": {
     "requirements": 15,
     "acceptance": 15,
-    "tests": 23,
+    "tests": 24,
     "tasks": 10,
     "gates": 3,
     "capabilities": 12,

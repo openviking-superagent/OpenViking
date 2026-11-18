@@ -50,6 +50,7 @@ AGENTS.md                 agent entry point (read order, commands, stop rules)
 WORKFLOW.md               the /workflow states and gates
 lib/selector.mjs          constraints, scoring, determinism, stickiness
 lib/isolation.mjs         ovIsolation -> OAR channel mapping + ownership env
+lib/adapter/session.mjs   isolation-bound open: refuses before a runtime starts
 lib/spec-validate.mjs     REQ/AC/TC/TASK/GATE closure checks
 lib/gate.mjs              argv-only checks + hashed evidence
 lib/replay.mjs            decision replay (reproducibility + agreement)
@@ -87,8 +88,11 @@ stay hard constraints, so a candidate without them is ineligible.
 
 ## Scope of this change
 
-Included: spec and closure checks, selector, isolation mapping, replay,
-workflow runner, gates, tests. Not included yet: the OAR adapter itself
-(`lib/adapter/*`), capture fallback, dark launch and canary. Those are tasks
-`T2.1`-`T3.1` in `spec/tasks.json`; they need the `@botiverse/oar` dependency
-and real CLI probes, which this change intentionally does not add.
+Included: spec and closure checks, selector, isolation mapping, the
+isolation-bound opening contract (`lib/adapter/session.mjs`), replay, workflow
+runner, gates, tests.
+
+Not included yet: runtime-specific wiring (`lib/adapter/claude.mjs`,
+`lib/adapter/pi.mjs`), capture fallback, dark launch and canary. Those are
+tasks `T2.1`-`T3.1` in `spec/tasks.json`; they need the `@botiverse/oar`
+dependency and real CLI probes, which this change intentionally does not add.
