@@ -1,0 +1,11 @@
+{
+  "version": "2026-11-18.1",
+  "roles": [
+    { "id": "planner", "canWrite": ["spec/tasks.json", "evidence/plan"], "cannotWrite": ["lib/", "test/"], "duty": "Split work, write verify commands and context packs." },
+    { "id": "implementer", "canWrite": ["lib/", "test/", "evidence/"], "cannotWrite": ["spec/requirements.json", "spec/policy/"], "duty": "Implement one task and self-verify." },
+    { "id": "verifier", "canWrite": ["test/", "evidence/"], "cannotWrite": ["lib/"], "duty": "Re-run checks independently and add adversarial cases." },
+    { "id": "reviewer", "canWrite": ["evidence/review.json"], "cannotWrite": ["lib/", "test/"], "duty": "Score the rubric and assign S1-S4." },
+    { "id": "debugger", "canWrite": ["lib/", "test/", "evidence/"], "cannotWrite": ["spec/requirements.json"], "duty": "Run D0-D7 and add the regression case." },
+    { "id": "release", "canWrite": ["evidence/", "docs/"], "cannotWrite": ["lib/"], "duty": "Run gates, canary and rollback." }
+  ]
+}

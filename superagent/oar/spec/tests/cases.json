@@ -1,0 +1,265 @@
+{
+  "version": "2026-11-18.1",
+  "cases": [
+    {
+      "id": "TC-001",
+      "level": "L1",
+      "given": "two eligible candidates with identical scores",
+      "when": "decide runs one hundred times with the same clock",
+      "then": "the same backend wins every time through the declared tie-break",
+      "requirements": [
+        "REQ-006"
+      ],
+      "automation": "test/selector.test.mjs#tie-break is deterministic"
+    },
+    {
+      "id": "TC-002",
+      "level": "L1",
+      "given": "a candidate whose E2 evidence is older than the policy window",
+      "when": "the candidate is evaluated",
+      "then": "it fails C8 and the reason contains the age",
+      "requirements": [
+        "REQ-013"
+      ],
+      "automation": "test/selector.test.mjs#stale evidence fails C8"
+    },
+    {
+      "id": "TC-003",
+      "level": "L1",
+      "given": "every candidate fails a hard constraint",
+      "when": "decide is called",
+      "then": "NoEligibleBackendError lists each backend with its constraint codes",
+      "requirements": [
+        "REQ-005"
+      ],
+      "automation": "test/selector.test.mjs#no eligible candidate fails closed"
+    },
+    {
+      "id": "TC-004",
+      "level": "L1",
+      "given": "a request that requires prepared_rotation",
+      "when": "the OAR candidate does not declare it",
+      "then": "the candidate fails C3 while native stays eligible",
+      "requirements": [
+        "REQ-009"
+      ],
+      "automation": "test/selector.test.mjs#missing required capability fails C3"
+    },
+    {
+      "id": "TC-005",
+      "level": "L1",
+      "given": "a multi-tenant request and a candidate without tenant-safe isolation",
+      "when": "the candidates are evaluated",
+      "then": "that candidate fails C5",
+      "requirements": [
+        "REQ-012"
+      ],
+      "automation": "test/selector.test.mjs#multi-tenant needs tenant-safe isolation"
+    },
+    {
+      "id": "TC-006",
+      "level": "L1",
+      "given": "E2 evidence with confidence below the policy floor",
+      "when": "the candidate is evaluated",
+      "then": "C8 fails with the confidence in the reason",
+      "requirements": [
+        "REQ-013"
+      ],
+      "automation": "test/selector.test.mjs#low confidence fails C8"
+    },
+    {
+      "id": "TC-007",
+      "level": "L1",
+      "given": "a policy whose weights do not sum to one",
+      "when": "decide is called",
+      "then": "PolicyError names the weights problem and nothing is chosen",
+      "requirements": [
+        "REQ-014"
+      ],
+      "automation": "test/selector.test.mjs#invalid policy is rejected"
+    },
+    {
+      "id": "TC-008",
+      "level": "L1",
+      "given": "a previous decision and no declared re-evaluation event",
+      "when": "the next turn is decided",
+      "then": "the previous backend is returned with reasonCode sticky",
+      "requirements": [
+        "REQ-010"
+      ],
+      "automation": "test/selector.test.mjs#sticky decision survives an ordinary turn"
+    },
+    {
+      "id": "TC-009",
+      "level": "L1",
+      "given": "a sticky decision and a session_rotation event",
+      "when": "the session is decided again",
+      "then": "the selector re-evaluates and may change backend",
+      "requirements": [
+        "REQ-010"
+      ],
+      "automation": "test/selector.test.mjs#declared event re-evaluates"
+    },
+    {
+      "id": "TC-010",
+      "level": "L1",
+      "given": "OAR scores higher than native while native has the lower priority number",
+      "when": "decide chooses",
+      "then": "OAR wins; priority is used only for ties",
+      "requirements": [
+        "REQ-004"
+      ],
+      "automation": "test/selector.test.mjs#score beats tie-break priority"
+    },
+    {
+      "id": "TC-011",
+      "level": "L1",
+      "given": "policy rollout allows only native",
+      "when": "an OAR candidate is evaluated",
+      "then": "it fails C6 and native is chosen",
+      "requirements": [
+        "REQ-004"
+      ],
+      "automation": "test/selector.test.mjs#rollout allowlist is enforced"
+    },
+    {
+      "id": "TC-012",
+      "level": "L1",
+      "given": "the native backend for any catalog runtime",
+      "when": "isolationFor is asked",
+      "then": "it answers ok through the existing isolation",
+      "requirements": [
+        "REQ-001",
+        "REQ-003",
+        "REQ-008"
+      ],
+      "automation": "test/isolation.test.mjs#native always uses the existing isolation"
+    },
+    {
+      "id": "TC-013",
+      "level": "L1",
+      "given": "pi with OAR in-process execution",
+      "when": "isolationFor is asked",
+      "then": "it answers ineligible because per-session env cannot reach the extension",
+      "requirements": [
+        "REQ-012"
+      ],
+      "automation": "test/isolation.test.mjs#in-process pi cannot receive isolation"
+    },
+    {
+      "id": "TC-014",
+      "level": "L1",
+      "given": "a runtime whose OAR isolation mapping is not verified",
+      "when": "isolationFor is asked",
+      "then": "it answers pending and the selector treats the OAR backend as ineligible",
+      "requirements": [
+        "REQ-002",
+        "REQ-003",
+        "REQ-012",
+        "REQ-008"
+      ],
+      "automation": "test/isolation.test.mjs#unverified mapping stays pending"
+    },
+    {
+      "id": "TC-015",
+      "level": "L1",
+      "given": "an agent descriptor with dataDir and ovConfig",
+      "when": "ownershipEnv is called",
+      "then": "the six ownership switches are 0 and the ovConfig path is present",
+      "requirements": [
+        "REQ-011"
+      ],
+      "automation": "test/isolation.test.mjs#ownership env pins the instance"
+    },
+    {
+      "id": "TC-016",
+      "level": "L2",
+      "given": "the committed spec files",
+      "when": "validateSpec runs",
+      "then": "it reports ok with full requirement coverage",
+      "requirements": [
+        "REQ-014"
+      ],
+      "automation": "test/spec-validate.test.mjs#committed spec passes"
+    },
+    {
+      "id": "TC-017",
+      "level": "L2",
+      "given": "a spec with a duplicate id, an orphan test and a dangling task dependency",
+      "when": "validateSpec runs",
+      "then": "each problem is reported with its code",
+      "requirements": [
+        "REQ-014"
+      ],
+      "automation": "test/spec-validate.test.mjs#duplicate, orphan and dangling links are reported"
+    },
+    {
+      "id": "TC-018",
+      "level": "L2",
+      "given": "a gate with one passing and one failing check",
+      "when": "runGate runs",
+      "then": "the report marks the gate failed and keeps both checks",
+      "requirements": [
+        "REQ-015"
+      ],
+      "automation": "test/gate.test.mjs#a failing check fails the gate"
+    },
+    {
+      "id": "TC-019",
+      "level": "L2",
+      "given": "a passing gate report and evidence changed afterwards",
+      "when": "verifyEvidence runs",
+      "then": "it fails on the hash mismatch",
+      "requirements": [
+        "REQ-015"
+      ],
+      "automation": "test/gate.test.mjs#changed evidence fails verification"
+    },
+    {
+      "id": "TC-020",
+      "level": "L2",
+      "given": "the replay fixture",
+      "when": "replayDecisions runs each sample twice",
+      "then": "mismatches is zero and the agreement field is reported",
+      "requirements": [
+        "REQ-006"
+      ],
+      "automation": "test/replay.test.mjs#replay is reproducible"
+    },
+    {
+      "id": "TC-021",
+      "level": "L1",
+      "given": "a task DAG with one done task and one todo dependent",
+      "when": "readyTasks runs",
+      "then": "only the unblocked task is ready; a cycle is reported",
+      "requirements": [
+        "REQ-014"
+      ],
+      "automation": "test/workflow.test.mjs#ready tasks and cycles"
+    },
+    {
+      "id": "TC-022",
+      "level": "L2",
+      "given": "a matrix entry marked available with E1 evidence",
+      "when": "validateSpec runs",
+      "then": "the matrix entry is rejected",
+      "requirements": [
+        "REQ-001",
+        "REQ-002"
+      ],
+      "automation": "test/spec-validate.test.mjs#available oar needs E2"
+    },
+    {
+      "id": "TC-023",
+      "level": "L1",
+      "given": "a successful decision",
+      "when": "the record is read",
+      "then": "it carries ids, versions, candidates, choice, reason and fallback chain",
+      "requirements": [
+        "REQ-004",
+        "REQ-007"
+      ],
+      "automation": "test/selector.test.mjs#decision record is complete"
+    }
+  ]
+}

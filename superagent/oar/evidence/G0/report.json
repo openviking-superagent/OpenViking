@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "gate": "G0",
+  "title": "Foundation: spec closes, selector and isolation are tested",
+  "generatedAt": "2026-11-18T20:41:14.011Z",
+  "ok": true,
+  "checks": [
+    {
+      "id": "spec",
+      "cmd": [
+        "node",
+        "lib/spec-validate.mjs"
+      ],
+      "exit": 0,
+      "signal": null,
+      "durationMs": 29,
+      "ok": true,
+      "stdoutSha256": "92ca74d7b400f6d7908e84ef53f4e0ab737a439556a8cf682722037fb724773a",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "selector",
+      "cmd": [
+        "node",
+        "--test",
+        "test/selector.test.mjs"
+      ],
+      "exit": 0,
+      "signal": null,
+      "durationMs": 85,
+      "ok": true,
+      "stdoutSha256": "821eb2d8624561ad803eff94fcac6a9737e3371b72d8121500c247421e7ff970",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "isolation",
+      "cmd": [
+        "node",
+        "--test",
+        "test/isolation.test.mjs"
+      ],
+      "exit": 0,
+      "signal": null,
+      "durationMs": 92,
+      "ok": true,
+      "stdoutSha256": "6d673dad23fd02fdb1c8efff6ae341de3fddbf9de7054027868209dc9cddb1ff",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "spec-validate",
+      "cmd": [
+        "node",
+        "--test",
+        "test/spec-validate.test.mjs"
+      ],
+      "exit": 0,
+      "signal": null,
+      "durationMs": 81,
+      "ok": true,
+      "stdoutSha256": "c118178ba88601740516c0606b143c1735618f76a5fb4510c7c1f826d88c32f2",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "gate",
+      "cmd": [
+        "node",
+        "--test",
+        "test/gate.test.mjs"
+      ],
+      "exit": 0,
+      "signal": null,
+      "durationMs": 209,
+      "ok": true,
+      "stdoutSha256": "2be01396e82b22021a4b709c77de0666405e2c2544af5c7bb428732f29e7c5d4",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "replay",
+      "cmd": [
+        "node",
+        "--test",
+        "test/replay.test.mjs"
+      ],
+      "exit": 0,
+      "signal": null,
+      "durationMs": 82,
+      "ok": true,
+      "stdoutSha256": "70c521d450d0ff95b79cecc85abbd9848c9aff60ecde04cffe331464257c06e6",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "workflow",
+      "cmd": [
+        "node",
+        "--test",
+        "test/workflow.test.mjs"
+      ],
+      "exit": 0,
+      "signal": null,
+      "durationMs": 76,
+      "ok": true,
+      "stdoutSha256": "e92adcdee4ab0b19fa245cec66c3398199926aa621ff5c87638eb70e492ec01b",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "replay-cli",
+      "cmd": [
+        "node",
+        "lib/replay.mjs"
+      ],
+      "exit": 0,
+      "signal": null,
+      "durationMs": 30,
+      "ok": true,
+      "stdoutSha256": "71d0fc23f720a9383cc2ea5a3a5c2b40f752e4ede923ad95cf4a09e07687ee5c",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "hashes": {
+    "evidence/spec-validate.json": "92ca74d7b400f6d7908e84ef53f4e0ab737a439556a8cf682722037fb724773a"
+  }
+}

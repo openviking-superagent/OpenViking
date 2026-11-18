@@ -1,0 +1,29 @@
+{
+  "version": "2026-11-18.1",
+  "passScore": 3.5,
+  "minDimension": 3,
+  "dimensions": [
+    { "id": "correctness", "weight": 0.30, "title": "Correctness", "anchors": { "1": "wrong or missing edge case", "3": "main path correct, some edges covered", "5": "edges, concurrency and failure paths have evidence" } },
+    { "id": "design", "weight": 0.20, "title": "Design and spec conformance", "anchors": { "1": "bypasses the contract or duplicates an implementation", "3": "follows the layering", "5": "reuses the existing abstraction with the smallest diff" } },
+    { "id": "verifiability", "weight": 0.20, "title": "Verifiability", "anchors": { "1": "no test or cannot reproduce", "3": "tests exist but leave gaps", "5": "requirements, cases and evidence close" } },
+    { "id": "security", "weight": 0.10, "title": "Security and privacy", "anchors": { "1": "secret or cross-tenant risk", "3": "no obvious problem", "5": "least privilege, audit and redaction present" } },
+    { "id": "operability", "weight": 0.10, "title": "Operability", "anchors": { "1": "no logs or fallback", "3": "basic logs", "5": "metrics, alerts, rollback and degradation defined" } },
+    { "id": "maintainability", "weight": 0.10, "title": "Maintainability", "anchors": { "1": "hard to follow or coupled", "3": "readable", "5": "named, structured, documented" } }
+  ],
+  "severities": [
+    { "id": "S1", "definition": "data loss, security, or all sessions unavailable", "slaHours": 24 },
+    { "id": "S2", "definition": "main function wrong or severe performance regression", "slaHours": 72 },
+    { "id": "S3", "definition": "edge case or operability gap", "slaHours": 168 },
+    { "id": "S4", "definition": "style or wording", "slaHours": null }
+  ],
+  "metrics": [
+    { "id": "review-coverage", "definition": "changed lines reviewed by a non-author / changed lines", "target": 1, "source": "PR", "owner": "tech-lead", "frequency": "weekly" },
+    { "id": "first-response", "definition": "submit to first review comment, P50 and P90 hours", "target": "P50<=4, P90<=24", "source": "PR timestamps", "owner": "tech-lead", "frequency": "weekly" },
+    { "id": "review-size", "definition": "changed lines per review; lines per hour", "target": "200-400 lines; <=500 lines/hour", "source": "PR", "owner": "reviewer", "frequency": "weekly" },
+    { "id": "defect-density", "definition": "S1+S2 found before merge per 1000 changed lines", "target": "baseline then improve", "source": "review records", "owner": "qa", "frequency": "monthly" },
+    { "id": "escaped-defect-rate", "definition": "S1+S2 found after merge per 1000 changed lines", "target": "<=0.2", "source": "incidents", "owner": "qa", "frequency": "monthly" },
+    { "id": "rework-rate", "definition": "lines rewritten for review / changed lines", "target": "<=0.15", "source": "PR diff", "owner": "tech-lead", "frequency": "monthly" },
+    { "id": "first-pass-gate", "definition": "gates passing on first submission / submissions", "target": ">=0.8", "source": "gate reports", "owner": "sre", "frequency": "weekly" },
+    { "id": "review-record-completeness", "definition": "reviews with rubric and evidence / reviews", "target": 1, "source": "review schema", "owner": "tooling", "frequency": "per-change" }
+  ]
+}

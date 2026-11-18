@@ -1,0 +1,290 @@
+{
+  "version": "2026-11-18.1",
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "level": "MUST",
+      "title": "Every runtime SuperAgent already ships stays usable",
+      "statement": "The native backend MUST remain available for all nine runtimes in runtime-catalog.mjs (codex, traex, claude, volc, pi, durable, dsh, opencode, agy), and no change in this work may remove or deprecate a native adapter.",
+      "acceptance": [
+        {
+          "id": "AC-001-1",
+          "given": "the nine runtimes declared in runtime-catalog.mjs",
+          "when": "the matrix and the native contract suite are read",
+          "then": "every runtime has a native entry with evidence and no runtime is missing"
+        }
+      ],
+      "tests": [
+        "TC-012",
+        "TC-022"
+      ],
+      "owner": "runtime-integration"
+    },
+    {
+      "id": "REQ-002",
+      "level": "MUST",
+      "title": "OAR candidates are declared where an adapter exists",
+      "statement": "Runtimes covered by OAR MUST have an `oar` matrix entry with a status of available, pending or unavailable, and a reason; availability requires E2 or better evidence.",
+      "acceptance": [
+        {
+          "id": "AC-002-1",
+          "given": "a runtime with an OAR adapter but no verified probe",
+          "when": "the matrix is validated",
+          "then": "its oar status is pending and it cannot become a candidate yet"
+        }
+      ],
+      "tests": [
+        "TC-014",
+        "TC-022"
+      ],
+      "owner": "runtime-integration"
+    },
+    {
+      "id": "REQ-003",
+      "level": "MUST",
+      "title": "Uncovered runtimes are marked native-only",
+      "statement": "A runtime without an OAR adapter (traex, volc) MUST be marked native-only in the matrix and MUST NOT be described as OAR-supported in docs or UI.",
+      "acceptance": [
+        {
+          "id": "AC-003-1",
+          "given": "traex and volc",
+          "when": "the isolation mapping is asked for an oar backend",
+          "then": "the answer is ineligible with a reason, never a silent fallback"
+        }
+      ],
+      "tests": [
+        "TC-012",
+        "TC-014"
+      ],
+      "owner": "runtime-integration"
+    },
+    {
+      "id": "REQ-004",
+      "level": "MUST",
+      "title": "Backend selection has no hardcoded default",
+      "statement": "The selector MUST choose between eligible candidates from their constraint results and scores; it MUST NOT return a backend that is merely the product default, and `auto` MUST be the only default configuration value.",
+      "acceptance": [
+        {
+          "id": "AC-004-1",
+          "given": "two eligible candidates with different scores",
+          "when": "a decision is made",
+          "then": "the higher score wins even when the other backend has the lower tie-break priority"
+        }
+      ],
+      "tests": [
+        "TC-010",
+        "TC-011",
+        "TC-023"
+      ],
+      "owner": "runtime-integration"
+    },
+    {
+      "id": "REQ-005",
+      "level": "MUST",
+      "title": "No eligible candidate fails closed and explains why",
+      "statement": "When every candidate fails a hard constraint the selector MUST throw NoEligibleBackendError with each candidate's constraint code and reason; it MUST NOT fall back to a default backend.",
+      "acceptance": [
+        {
+          "id": "AC-005-1",
+          "given": "all candidates stale or missing a required capability",
+          "when": "decide is called",
+          "then": "the error lists every candidate and no session is opened"
+        }
+      ],
+      "tests": [
+        "TC-003"
+      ],
+      "owner": "runtime-integration"
+    },
+    {
+      "id": "REQ-006",
+      "level": "MUST",
+      "title": "Decisions are reproducible",
+      "statement": "For the same request, candidates, policy version and clock the selector MUST produce the same decision and the same tie-break, including across process restarts.",
+      "acceptance": [
+        {
+          "id": "AC-006-1",
+          "given": "a fixed decision input",
+          "when": "decide runs twice or is replayed from a fixture",
+          "then": "the chosen backend and component scores are identical"
+        }
+      ],
+      "tests": [
+        "TC-001",
+        "TC-020"
+      ],
+      "owner": "runtime-integration"
+    },
+    {
+      "id": "REQ-007",
+      "level": "MUST",
+      "title": "Every decision is recorded",
+      "statement": "A decision MUST carry the decision id, policy and evidence versions, every candidate's constraint results and scores, the chosen backend, the reason code and the fallback chain.",
+      "acceptance": [
+        {
+          "id": "AC-007-1",
+          "given": "a successful decision",
+          "when": "the record is inspected",
+          "then": "all required fields are present and policyVersion equals the policy used"
+        }
+      ],
+      "tests": [
+        "TC-023"
+      ],
+      "owner": "runtime-integration"
+    },
+    {
+      "id": "REQ-008",
+      "level": "MUST",
+      "title": "Native stays the behavioral baseline",
+      "statement": "Contract tests MUST assert native behavior first; an OAR candidate MAY only be admitted when it passes the same assertions or declares a documented difference.",
+      "acceptance": [
+        {
+          "id": "AC-008-1",
+          "given": "a capability covered by native",
+          "when": "the OAR candidate is assessed",
+          "then": "the result is pass, an explicit difference, or ineligible"
+        }
+      ],
+      "tests": [
+        "TC-012",
+        "TC-014"
+      ],
+      "owner": "runtime-integration"
+    },
+    {
+      "id": "REQ-009",
+      "level": "MUST",
+      "title": "Native-only capabilities stay hard constraints",
+      "statement": "Capabilities OAR does not model (prepared rotation, authority token, turn notice, loop breaker) MUST be represented as required capabilities, so a candidate without them is ineligible rather than degraded.",
+      "acceptance": [
+        {
+          "id": "AC-009-1",
+          "given": "a request requiring prepared_rotation",
+          "when": "the OAR candidate lacks it",
+          "then": "C3 fails the candidate"
+        }
+      ],
+      "tests": [
+        "TC-004"
+      ],
+      "owner": "runtime-integration"
+    },
+    {
+      "id": "REQ-010",
+      "level": "MUST",
+      "title": "Switching happens only at a session boundary",
+      "statement": "A re-evaluation MUST NOT move an in-flight turn; a backend change takes effect only on a new session or a resumable rotation.",
+      "acceptance": [
+        {
+          "id": "AC-010-1",
+          "given": "a sticky decision and no declared re-evaluation event",
+          "when": "the next turn starts",
+          "then": "the same backend is returned"
+        }
+      ],
+      "tests": [
+        "TC-008",
+        "TC-009"
+      ],
+      "owner": "ovsa"
+    },
+    {
+      "id": "REQ-011",
+      "level": "MUST",
+      "title": "SuperAgent owns memory for every runtime",
+      "statement": "Because the daemon owns recall and commit, an OAR-launched runtime MUST have its own OpenViking plugin inert: memory, auto recall, auto capture, auto commit and takeover all off, with workspace peer off, via the existing openVikingAgentEnv switches.",
+      "acceptance": [
+        {
+          "id": "AC-011-1",
+          "given": "an agent descriptor",
+          "when": "ownershipEnv is called",
+          "then": "the six required switches are \"0\" and the instance ovConfig is set"
+        }
+      ],
+      "tests": [
+        "TC-015"
+      ],
+      "owner": "ovsa"
+    },
+    {
+      "id": "REQ-012",
+      "level": "MUST",
+      "title": "Isolation is declared, mapped and unproven means ineligible",
+      "statement": "Each runtime's ovIsolation mechanism MUST map to an OAR session channel; until that mapping is verified against the real CLI, the OAR backend MUST be ineligible for that runtime.",
+      "acceptance": [
+        {
+          "id": "AC-012-1",
+          "given": "pi with OAR in-process execution",
+          "when": "isolationFor is asked",
+          "then": "the answer is ineligible because per-session env cannot reach an in-process extension"
+        }
+      ],
+      "tests": [
+        "TC-005",
+        "TC-013",
+        "TC-014"
+      ],
+      "owner": "runtime-integration"
+    },
+    {
+      "id": "REQ-013",
+      "level": "MUST",
+      "title": "Evidence has a floor and an expiry",
+      "statement": "A candidate MUST have evidence at or above the policy level, no older than maxAgeDays, and confidence at or above the floor; otherwise it fails C8.",
+      "acceptance": [
+        {
+          "id": "AC-013-1",
+          "given": "E2 evidence older than the policy window",
+          "when": "the candidate is evaluated",
+          "then": "C8 fails with the age in the reason"
+        }
+      ],
+      "tests": [
+        "TC-002",
+        "TC-006"
+      ],
+      "owner": "qa"
+    },
+    {
+      "id": "REQ-014",
+      "level": "MUST",
+      "title": "The spec closes: requirements, tests, tasks and gates",
+      "statement": "Every requirement MUST have acceptance criteria and at least one test; every test MUST point back to a requirement; every task MUST have requirements, outputs and verify commands; gates MUST declare argv checks and evidence.",
+      "acceptance": [
+        {
+          "id": "AC-014-1",
+          "given": "the spec files",
+          "when": "spec:validate runs",
+          "then": "there are zero duplicate, orphan or dangling links"
+        }
+      ],
+      "tests": [
+        "TC-007",
+        "TC-016",
+        "TC-017",
+        "TC-021"
+      ],
+      "owner": "tech-lead"
+    },
+    {
+      "id": "REQ-015",
+      "level": "SHOULD",
+      "title": "A gate is a command plus hashed evidence",
+      "statement": "Running a gate MUST execute only allowed argv commands, record each check, and verify that evidence files still match the hashes from the passing run.",
+      "acceptance": [
+        {
+          "id": "AC-015-1",
+          "given": "a passing gate report and a modified evidence file",
+          "when": "the gate is re-run without writing",
+          "then": "verification fails on the hash mismatch"
+        }
+      ],
+      "tests": [
+        "TC-018",
+        "TC-019"
+      ],
+      "owner": "sre"
+    }
+  ]
+}

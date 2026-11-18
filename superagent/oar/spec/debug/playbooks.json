@@ -1,0 +1,13 @@
+{
+  "version": "2026-11-18.1",
+  "playbooks": [
+    { "id": "no-candidate", "symptom": "NoEligibleBackendError", "checks": ["C8 evidence age", "C2 CLI availability", "C6 policy allowlist"], "actions": ["refresh probes", "roll back a pin", "lift a policy pin with an audit record"] },
+    { "id": "oar-open-fails", "symptom": "OAR session does not open", "checks": ["OAR and CLI versions", "login state", "SessionOptions conflicts"], "actions": ["pin native", "keep rawEvents and stderr", "open a follow-up task"] },
+    { "id": "only-mcp", "symptom": "Tools work but recall and capture do not", "checks": ["isolation channel", "plugin load", "context assemble availability"], "actions": ["fix the mount", "mark the candidate pending", "use native"] },
+    { "id": "double-write", "symptom": "One turn appears in two OV sessions", "checks": ["OPENVIKING_* switches", "isolation verified", "controllers"], "actions": ["trip the circuit", "disable the oar candidate", "repair the session"] },
+    { "id": "resume-duplicates", "symptom": "Resume repeats messages", "checks": ["client message id", "controller binding", "commit task id"], "actions": ["pause oar", "add idempotency", "re-run the resume case"] },
+    { "id": "tokens-spike", "symptom": "Tokens jump after switching", "checks": ["context assemble budget", "recall dedup", "history prefix"], "actions": ["revert the policy version", "disable context assemble", "compare usage"] },
+    { "id": "always-native", "symptom": "The selector never picks OAR", "checks": ["weights", "evidence status", "isolation mapping"], "actions": ["replay the decisions", "refresh evidence", "review the policy"] },
+    { "id": "decision-flap", "symptom": "The backend changes between turns", "checks": ["sticky key", "re-evaluation events", "concurrent selectors"], "actions": ["fix the event list", "pin the policy", "inspect the decision timeline"] }
+  ]
+}
