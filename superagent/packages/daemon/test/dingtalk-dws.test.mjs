@@ -391,6 +391,19 @@ test('DWS reports a post-stage pruning failure and resumes the unchanged journal
   }
 });
 
+test('DWS pruning keeps the newest context lines of a group', async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'ovsa-dingtalk-cap-'));
+  const state = new DingTalkState(directory, config.profile);
+  t.after(async () => { state.close(); await rm(directory, { recursive: true, force: true }); });
+  const ids = [];
+  for (let i = 0; i < 32; i++) {
+    ids.push('keep-' + i);
+    state.stage({ id: ids.at(-1) }, group, 'context');
+  }
+  state.pruneContext(group, Date.now() - 6 * 60 * 60 * 1000, 30);
+  assert.deepEqual(state.pendingGroup(group).map(({ envelope }) => JSON.parse(envelope).id), ids.slice(2));
+});
+
 test('DWS pruning removes expired context from inactive groups and preserves pending work', async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'ovsa-dingtalk-prune-'));
   const state = new DingTalkState(directory, config.profile);
