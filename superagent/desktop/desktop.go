@@ -74,13 +74,9 @@ type Desktop struct {
 }
 
 func newDesktop(opts desktopOptions) (*Desktop, error) {
-	home := os.Getenv("OV_SUPERAGENT_HOME")
-	if home == "" {
-		userHome, err := os.UserHomeDir()
-		if err != nil {
-			return nil, fmt.Errorf("cannot find the home directory: %w", err)
-		}
-		home = filepath.Join(userHome, ".ov-superagent")
+	home, err := resolveHome()
+	if err != nil {
+		return nil, err
 	}
 	if err := os.MkdirAll(filepath.Join(home, "logs"), 0o755); err != nil {
 		return nil, err
@@ -117,6 +113,23 @@ func newDesktop(opts desktopOptions) (*Desktop, error) {
 
 	go d.check()
 	return d, nil
+}
+
+// resolveHome follows the same order as the release's own platform layer: the
+// explicit variable, then HOME, then the account's home directory. A shell that
+// guessed differently would look at a home the CLI never uses.
+func resolveHome() (string, error) {
+	if explicit := os.Getenv("OV_SUPERAGENT_HOME"); explicit != "" {
+		return explicit, nil
+	}
+	if home := os.Getenv("HOME"); home != "" {
+		return filepath.Join(home, ".ov-superagent"), nil
+	}
+	userHome, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("cannot find the home directory: %w", err)
+	}
+	return filepath.Join(userHome, ".ov-superagent"), nil
 }
 
 func (d *Desktop) stop() {
