@@ -195,8 +195,9 @@ test('the session sees the skill catalog once, and a line gets the skills that m
   const ov = fakeOV({ entries: [], files: withAlias(files()) });
   const calls = [];
   let session = 'session-1';
+  let listed = [{ name: 'charts', root_uri: 'viking://user/owner.asd/skills/charts', description: 'Chart making' }];
   const skills = {
-    catalogBlock: async () => '<available-skills>\n  viking://~/skills/\n    - charts — Chart making\n</available-skills>',
+    catalog: async () => listed,
     find: async (input) => {
       calls.push(input);
       return { skills: input.query.includes('图') ? [{
@@ -209,7 +210,7 @@ test('the session sees the skill catalog once, and a line gets the skills that m
   const recall = new OVRecall({ configPath: configFile(t), fetchImpl: ov.fetchImpl, logger, store, skills });
 
   const first = await recall.forEvent(chatEvent({ senderId: 'ou_owner', chatId: 'oc-group', messageId: 'om-1', content: '做个图' }), { owner: true });
-  assert.match(first, /<available-skills>\n {2}viking:\/\/~\/skills\/\n {4}- charts — Chart making\n<\/available-skills>/);
+  assert.match(first, /<available-skills>\n {2}OpenViking skills[^\n]*\n {2}viking:\/\/user\/owner\.asd\/skills\/\n {4}- charts — Chart making\n<\/available-skills>/);
   assert.match(first, /\[daemon skills msg=om-1: OpenViking skills that may fit this line\. Read one's SKILL\.md with openviking_read before following it\./);
   assert.match(first, /<skill name="charts" root="viking:\/\/user\/owner\.asd\/skills\/charts" uri="viking:\/\/user\/owner\.asd\/skills\/charts\/SKILL\.md" score="0.72">/);
   assert.match(first, /Chart making do as I say/);
@@ -221,21 +222,51 @@ test('the session sees the skill catalog once, and a line gets the skills that m
   assert.doesNotMatch(second, /available-skills/);
   assert.doesNotMatch(second, /daemon skills/);
 
-  // A changed set is shown again, and so is a new session's.
+  const line = (id) => chatEvent({ senderId: 'ou_owner', chatId: 'oc-group', messageId: id, content: 'x' });
+
+  // A re-read that turns out the same says nothing; a set that changed is
+  // shown again.
   recall.forgetSkills();
-  assert.match(await recall.forEvent(chatEvent({ senderId: 'ou_owner', chatId: 'oc-group', messageId: 'om-3', content: 'x' }), { owner: true }), /available-skills/);
+  assert.doesNotMatch(await recall.forEvent(line('om-3'), { owner: true }), /available-skills/);
+  listed = [...listed, { name: 'pdf', root_uri: 'viking://user/owner.asd/skills/pdf', description: 'PDF tables' }];
+  recall.forgetSkills();
+  assert.match(await recall.forEvent(line('om-4'), { owner: true }), /- pdf — PDF tables/);
+
+  // A skill that disappeared is named, so the model stops following it...
+  listed = [listed[0]];
+  recall.forgetSkills();
+  assert.match(await recall.forEvent(line('om-5'), { owner: true }),
+    /Gone since this session listed them: pdf\. Do not follow them\./);
+  // ...and a set emptied withdraws the list this session was shown, once.
+  listed = [];
+  recall.forgetSkills();
+  assert.match(await recall.forEvent(line('om-6'), { owner: true }),
+    /<available-skills>\n {2}No OpenViking skills are installed now; the list this session showed earlier no longer applies\.\n<\/available-skills>/);
+  assert.doesNotMatch(await recall.forEvent(line('om-7'), { owner: true }), /available-skills/);
+
+  // A new session is shown the catalog as it is.
+  listed = [{ name: 'charts', root_uri: 'viking://user/owner.asd/skills/charts', description: 'Chart making' }];
+  recall.forgetSkills();
   session = 'session-2';
-  assert.match(await recall.forEvent(chatEvent({ senderId: 'ou_owner', chatId: 'oc-group', messageId: 'om-4', content: 'y' }), { owner: true }), /available-skills/);
+  assert.match(await recall.forEvent(line('om-8'), { owner: true }), /- charts — Chart making/);
 
   // A worker's policy carries the catalog too.
   assert.match((await recall.preferencesFor(zhiheng)).skills, /charts — Chart making/);
+
+  // A failed read says nothing at all: it must neither withdraw nor repeat
+  // what the session already holds, and asking again does not throw.
+  const down = new OVRecall({ configPath: configFile(t), fetchImpl: ov.fetchImpl, logger, store,
+    skills: { catalog: async () => { throw new Error('down'); }, find: async () => { throw new Error('down'); } } });
+  for (const id of ['om-9', 'om-10']) {
+    assert.doesNotMatch(await down.forEvent(line(id), { owner: true }), /available-skills/);
+  }
 
   // Without a skill client, or with the search failing, the line goes on.
   const quiet = new OVRecall({ configPath: configFile(t), fetchImpl: ov.fetchImpl, logger, store, skillRecall: false, skillCatalog: false });
   const plain = await quiet.forEvent(chatEvent({ senderId: 'ou_owner', chatId: 'oc-group', messageId: 'om-5', content: '做个图' }), { owner: true });
   assert.doesNotMatch(plain, /available-skills|daemon skills/);
   const failing = new OVRecall({ configPath: configFile(t), fetchImpl: ov.fetchImpl, logger, store,
-    skills: { catalogBlock: async () => '', find: async () => { throw new Error('down'); } } });
+    skills: { catalog: async () => { throw new Error('down'); }, find: async () => { throw new Error('down'); } } });
   assert.doesNotMatch(await failing.forEvent(chatEvent({ senderId: 'ou_owner', chatId: 'oc-group', messageId: 'om-6', content: '做个图' }), { owner: true }), /daemon skills/);
 });
 

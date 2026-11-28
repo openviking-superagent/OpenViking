@@ -57,9 +57,20 @@ Every line addressed to the agent also runs one skill search
 (`/api/v1/skills/find`, at most three hits above 0.4), shown after the memory as
 `<skill>` entries naming the SKILL.md to read. The skill itself is never
 injected whole: the model reads it with `openviking_read` when it picks it. A
-server without the skills API costs one failed call per ten minutes, not one
+server without the skills API costs one failed call per two minutes, not one
 per line. A worker's policy carries the same catalog on every turn (it is
 rebuilt from the recall), since a worker has no per-line recall.
+
+The catalog read is cached five minutes, so a skill another instance adds or
+removes shows at the next addressed line within that; a change this instance
+makes clears the read at once. The session remembers what it was last shown:
+if a skill is gone from the new list it is named back (`Gone since this
+session listed them: …`), and if the list is now empty the catalog is
+withdrawn rather than silently stale, since the model would otherwise keep
+following a skill that no longer exists. A read that failed says nothing at
+all: the session keeps what it has. Both are the same rule as the DSH plugin's
+catalog (PR #8376): withdraw only on a confirmed empty list, never on a
+failed read, and never repeat an unchanged list.
 
 For substantive questions and project discussions, the local runtime's policy
 asks the model to start with one focused `openviking_find`, reuse earlier

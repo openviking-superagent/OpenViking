@@ -417,7 +417,7 @@ export class OVSkillClient {
   // the field, but carrying it through would risk echoing content).
   static failure(error, options = {}) {
     return toolError(error, {
-      notFound: 'No skill is installed under that name',
+      notFound: 'No skill is installed under that name in that root (viking://~/skills unless target_uri names viking://agent/skills)',
       invalid: 'OpenViking rejected the input: a skill\'s SKILL.md needs frontmatter with name and description, and an update must keep the same name',
       ...options,
     });
@@ -534,28 +534,35 @@ export class OVSkillClient {
   }
 
   // `from_source` refetches the Git source the server recorded at install
-  // time; anything else replaces the package with the given content.
+  // time; anything else replaces the package with the given content. The root
+  // is always sent: a name alone would let the server's lookup fall through to
+  // the account-shared copy of a skill this instance does not own.
   async update({ name, from_source = false, wait = false, target_uri, ...source } = {}) {
     const skill = checkSkillName(name);
     const body = { wait: Boolean(wait), ...(from_source ? { from_source: true } : await this.source(source)) };
-    if (trimmed(target_uri)) body.target_uri = normalizeSkillRoot(target_uri);
+    body.target_uri = normalizeSkillRoot(target_uri);
     const result = (await this.send('PUT', `/api/v1/skills/${encodeURIComponent(skill)}`, body, this.installTimeoutMs)).result;
     return this.installed(result, { action: 'update' });
   }
 
-  // Every installed skill from one root (the caller's own by default; the
-  // account-shared root holds skills this instance may not own).
+  // The skill names of one root: the instance's own unless the caller names
+  // the shared one. A batch operation must not reach across roots by name:
+  // the server's name lookup falls through from the user root to
+  // viking://agent/skills, which for a bot in a group would change or delete
+  // an account-shared skill nobody there owns.
   async names({ target_uri } = {}) {
-    const listing = await this.list({ target_uri, limit: 1000 });
-    return (listing.data.skills ?? []).map((skill) => trimmed(skill.name)).filter(Boolean);
+    const root = trimmed(target_uri) ? normalizeSkillRoot(target_uri) : OV_SKILL_ROOT;
+    const listing = await this.list({ target_uri: root, limit: 1000 });
+    return [...new Set((listing.data.skills ?? []).map((skill) => trimmed(skill.name)).filter(Boolean))];
   }
 
   // `ov skills update` with no names: refetch every installed skill that has a
   // recorded Git source and report the ones that do not.
   async updateInstalled({ names: requested, wait = false, target_uri } = {}) {
+    const root = trimmed(target_uri) ? normalizeSkillRoot(target_uri) : OV_SKILL_ROOT;
     const skills = Array.isArray(requested) && requested.length
       ? requested.map((name) => checkSkillName(name))
-      : await this.names({ target_uri });
+      : await this.names({ target_uri: root });
     if (skills.length === 0) return { text: 'No skills to update.', data: { changed: false, updated: [], skipped: [] } };
     const updated = [];
     const skipped = [];
@@ -563,7 +570,7 @@ export class OVSkillClient {
       try {
         let fromSource = true;
         try {
-          const shown = await this.show({ name, target_uri, include_content: false, include_files: false, include_source: true, level: 0 });
+          const shown = await this.show({ name, target_uri: root, include_content: false, include_files: false, include_source: true, level: 0 });
           const source = shown.data.skill?.source;
           fromSource = trimmed(source?.type) === 'git';
         } catch (error) {
@@ -577,7 +584,7 @@ export class OVSkillClient {
           skipped.push({ name, reason });
           continue;
         }
-        const result = await this.update({ name, from_source: true, wait, target_uri });
+        const result = await this.update({ name, from_source: true, wait, target_uri: root });
         updated.push({ name, ...(result.data.installed?.[0] ?? {}) });
       } catch (error) {
         if (Array.isArray(requested) && requested.length) throw error;
@@ -595,12 +602,12 @@ export class OVSkillClient {
   }
 
   async remove({ name, all = false, target_uri } = {}) {
-    const root = trimmed(target_uri) ? normalizeSkillRoot(target_uri) : '';
+    const root = trimmed(target_uri) ? normalizeSkillRoot(target_uri) : OV_SKILL_ROOT;
     const skills = all ? await this.names({ target_uri: root }) : [checkSkillName(name)];
     if (skills.length === 0) return { text: 'No skills to remove.', data: { changed: false, removed: [] } };
     const removed = [];
     for (const skill of skills) {
-      const query = root ? `?target_uri=${encodeURIComponent(root)}` : '';
+      const query = `?target_uri=${encodeURIComponent(root)}`;
       removed.push((await this.send('DELETE', `/api/v1/skills/${encodeURIComponent(skill)}${query}`)).result ?? { name: skill });
     }
     return {

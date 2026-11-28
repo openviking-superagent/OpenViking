@@ -12,7 +12,7 @@ import { meetingFolder, meetingNotesRoot, meetingReadTarget } from '../meeting/n
 import { meetingContextLines } from '../meeting/index.mjs';
 import { OVUnavailableError } from '../ov-connection.mjs';
 import { OVSessionClient, withoutWorkingMemory } from '../ov-session-context.mjs';
-import { OVSkillClient } from '../ov-skills.mjs';
+import { OV_SHARED_SKILL_ROOT, OV_SKILL_ROOT, OVSkillClient, normalizeSkillRoot } from '../ov-skills.mjs';
 import { OVToolClient } from '../ov-tools.mjs';
 import { opaqueRef, redactSensitive, safeError } from '../logger.mjs';
 import { BOT_SENDERS, isoMinute, readMetadataTag, senderLabel } from '../runtime-input.mjs';
@@ -1997,11 +1997,31 @@ export class ActionService {
     return result;
   }
 
+  // The account-shared root is nobody's own: changing it is the owner's call.
+  // Who asked comes from the authenticated input the tool names (decision_id),
+  // never from the model's words, and only for that root: the instance's own
+  // skills are the business of whoever is talking to it.
+  assertSharedSkillAuthority(input, caller) {
+    // Describing a source installs nothing.
+    if (input.list_only === true) return;
+    const root = String(input.target_uri ?? '').trim() ? normalizeSkillRoot(input.target_uri) : OV_SKILL_ROOT;
+    if (root !== OV_SHARED_SKILL_ROOT) return;
+    const scope = 'viking://agent/skills is shared with the whole account, so changing it is the owner\'s call';
+    if (!String(input.decision_id ?? '').trim()) {
+      throw blocked('not_owner', `Blocked: ${scope}. Pass the owner\'s line as decision_id, or change this instance\'s own viking://~/skills instead. ${NO_ACTION}`);
+    }
+    const row = this.resolveDecision(input, caller, 'Not changed');
+    if (!this.isOwnerEvent(normalizeEvent(JSON.parse(row.event_json)))) {
+      throw blocked('not_owner', `Blocked: ${scope}, and the line decision_id names was not the owner\'s. ${NO_ACTION} Tell the asker it needs the owner.`);
+    }
+  }
+
   // Installs and removals check authority only before the request leaves: a
   // write the server took must not be reported failed because the runtime was
   // retired while it landed, and neither is retried.
   async openvikingSkillAdd(input, caller) {
     caller.trace.invoked = true;
+    this.assertSharedSkillAuthority(input, caller);
     const result = await this.ovSkillClient().add({ ...input, workspace: this.config.workspace });
     if (result?.data?.changed) this.onSkillsChanged();
     return result;
@@ -2012,6 +2032,7 @@ export class ActionService {
   // refreshed (the CLI's `ov skills update` with no names).
   async openvikingSkillUpdate(input, caller) {
     caller.trace.invoked = true;
+    this.assertSharedSkillAuthority(input, caller);
     const client = this.ovSkillClient();
     const result = !String(input.name ?? '').trim()
       ? await client.updateInstalled({ wait: input.wait, target_uri: input.target_uri })
@@ -2025,6 +2046,7 @@ export class ActionService {
     if (input.all !== true && !String(input.name ?? '').trim()) {
       throw blocked('invalid_input', `Pass the skill name, or all: true to remove every skill in that root. ${NO_ACTION}`);
     }
+    this.assertSharedSkillAuthority(input, caller);
     const result = await this.ovSkillClient().remove({ name: input.name, all: input.all === true, target_uri: input.target_uri });
     if (result?.data?.changed) this.onSkillsChanged();
     return result;

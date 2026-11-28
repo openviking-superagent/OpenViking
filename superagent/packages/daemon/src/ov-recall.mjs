@@ -3,7 +3,7 @@
 
 import { OVConnection, readOVConfig } from './ov-connection.mjs';
 import { OV_PREFERENCES, directoryPerson, findPersonDirectory, personDirectory, personId, scanPeople } from './ov-person.mjs';
-import { OVSkillClient, SKILL_CATALOG_TOKENS, sanitizeInline, truncateToTokens } from './ov-skills.mjs';
+import { OVSkillClient, SKILL_CATALOG_TOKENS, renderSkillCatalog, sanitizeInline, truncateToTokens } from './ov-skills.mjs';
 
 // What the daemon shows of OpenViking memory after a line someone sent, the
 // same for every runtime. The instance is one OV user; everything it took part
@@ -50,6 +50,17 @@ const MIN_QUERY_CHARS = 2;
 const SKILL_HITS = 3;
 const SKILL_SCORE_THRESHOLD = 0.4;
 const SKILL_TEXT_TOKENS = 120;
+// Another instance can add or remove a shared skill: the catalog is read
+// again this often, so its session sees that within five minutes at the next
+// line addressed to it (a change this instance makes clears the read at once).
+const CATALOG_TTL_MS = 5 * 60_000;
+// At most this many removed names are named back to a session.
+const SKILL_GONE_NAMES = 20;
+
+// What a session is told when the skills it was shown are all gone. Fixed
+// daemon text, never a rendered catalog: it must arrive however small the
+// budget is.
+const SKILL_NONE_BLOCK = `<available-skills>\n  No OpenViking skills are installed now; the list this session showed earlier no longer applies.\n</available-skills>`;
 
 const escapeAttribute = (value) => String(value).replace(/[&"<>]/g, (char) => (
   { '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;' }[char]));
@@ -174,43 +185,68 @@ export class OVRecall {
   }
 
   // A skill was installed, updated or removed: the next line shows the
-  // catalog as it is now, not as it was read a while ago.
+  // catalog as it is now, not as it was read a while ago. What this session
+  // was last shown stays, so a removal can still be named back to it.
   forgetSkills() {
     for (const key of this.cache.keys()) if (key.startsWith('catalog:')) this.cache.delete(key);
-    this.catalogShown.clear();
   }
 
-  // The installed-skill catalog, read through the cache: the session's first
-  // line pays for one list call, a later line pays only when the set changed.
-  async catalogBlock() {
-    if (!this.skillCatalog || !this.skills) return '';
+  // The installed skills as [{ block, names, ok }], read through the cache:
+  // one list call, cached five minutes, and after a failure kept two minutes
+  // so an OV without a skills API costs one call, not one per line.
+  async catalogSnapshot() {
+    const empty = { block: '', names: [], ok: false };
+    if (!this.skillCatalog || !this.skills) return empty;
     const key = `catalog:${this.skillCatalogTokens}`;
     try {
-      return await this.cached(key, () => this.skills.catalogBlock({ budgetTokens: this.skillCatalogTokens }));
+      return await this.cached(key, async () => {
+        const skills = await this.skills.catalog();
+        return {
+          block: renderSkillCatalog(skills, { budgetTokens: this.skillCatalogTokens }),
+          names: (skills ?? []).map((skill) => String(skill?.name ?? '').trim()).filter(Boolean),
+          ok: true,
+        };
+      }, CATALOG_TTL_MS);
     } catch (error) {
-      // A server without the skills API, or one that is down: do not ask again
-      // on every line, the catalog comes back with the next read after the
-      // cache expires.
       this.logger?.debug?.('ov_skill_catalog_skipped', { status: error?.httpStatus ?? null });
-      this.cache.set(key, { value: '', atMs: this.clock() - (CACHE_TTL_MS - FAILURE_TTL_MS) });
-      return '';
+      this.cache.set(key, { value: empty, atMs: this.clock() - (CATALOG_TTL_MS - FAILURE_TTL_MS) });
+      return empty;
     }
   }
 
-  // The catalog for the session that is open, or '' when it has already been
-  // shown unchanged: what exists is worth naming once, not after every line.
+  // The catalog a worker's policy carries: always the current one.
+  async catalogBlock() {
+    return (await this.catalogSnapshot()).block;
+  }
+
+  // The catalog for the session that is open, or '' when there is nothing new
+  // to say: what exists is worth naming once, not after every line. A set that
+  // shrank names what is gone, and one that emptied withdraws the list the
+  // session was shown, since nothing else would stop the model from following
+  // a skill that no longer exists.
   async catalogFor() {
-    const block = await this.catalogBlock();
-    if (!block) return '';
+    const snapshot = await this.catalogSnapshot();
     const session = this.sessionId() ?? 'local';
-    if (this.catalogShown.get(session) === block) return '';
-    this.catalogShown.set(session, block);
+    const shown = this.catalogShown.get(session);
+    if (!snapshot.block) {
+      // A read that failed keeps what the model has; an empty list after a
+      // catalog was shown is a change it must hear about.
+      if (!snapshot.ok || !shown) return '';
+      this.catalogShown.delete(session);
+      return SKILL_NONE_BLOCK;
+    }
+    if (shown?.block === snapshot.block) return '';
+    this.catalogShown.set(session, { block: snapshot.block, names: snapshot.names });
     // Sessions rotate; only the newest few matter.
     for (const key of this.catalogShown.keys()) {
       if (this.catalogShown.size <= 20) break;
       this.catalogShown.delete(key);
     }
-    return block;
+    const gone = shown ? shown.names.filter((name) => !snapshot.names.includes(name)) : [];
+    if (gone.length === 0) return snapshot.block;
+    const named = gone.slice(0, SKILL_GONE_NAMES);
+    const rest = gone.length - named.length;
+    return `${snapshot.block}\n  Gone since this session listed them: ${named.join(', ')}${rest > 0 ? `, and ${rest} more` : ''}. Do not follow them.`;
   }
 
   // The skills that may fit one line, as the API reports them (name, uri,
@@ -230,10 +266,11 @@ export class OVRecall {
     }
   }
 
-  // A cached read, a missing value too; a failure is not cached.
-  async cached(key, load) {
+  // A cached read, a missing value too; a failure is not cached. `ttlMs` is
+  // the read's own lifetime where it differs from the default.
+  async cached(key, load, ttlMs = CACHE_TTL_MS) {
     const hit = this.cache.get(key);
-    if (hit && this.clock() - hit.atMs < CACHE_TTL_MS) return hit.value;
+    if (hit && this.clock() - hit.atMs < ttlMs) return hit.value;
     const value = await load();
     this.cache.set(key, { value, atMs: this.clock() });
     return value;

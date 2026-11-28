@@ -755,7 +755,7 @@ describe('OpenViking tools', () => {
       updateInstalled: async (input) => { seen.push(['updateInstalled', input]); return { text: 'Skill update: 0 updated, 0 skipped.', data: { changed: false } }; },
       remove: async (input) => { seen.push(['remove', input]); return { text: 'Removed 1 skill(s): x.', data: { changed: true, removed: [] } }; },
     };
-    const { call, workspace, service } = setup(t, { ids: ['weixin'], ovSkills });
+    const { call, workspace, service, inbound } = setup(t, { ids: ['weixin'], ovSkills });
     let changed = 0;
     service.onSkillsChanged = () => { changed += 1; };
     await call('openviking_skill_list', { limit: 10 });
@@ -763,19 +763,58 @@ describe('OpenViking tools', () => {
     await call('openviking_skill_show', { name: 'pdf-tables', include_source: true, level: 2 });
     await call('openviking_skill_validate', { data: '---\nname: x\ndescription: y\n---\n' });
     await call('openviking_skill_add', { data: '---\nname: x\ndescription: y\n---\n' });
-    await call('openviking_skill_add', { directory: 'skills/x', target_uri: 'viking://agent/skills' });
+    await call('openviking_skill_add', { directory: 'skills/x' });
     await call('openviking_skill_update', { name: 'x', from_source: true });
     await call('openviking_skill_update', {});
     await call('openviking_skill_remove', { name: 'x' });
     assert.deepEqual(seen.map(([method]) => method),
       ['list', 'find', 'show', 'validate', 'add', 'add', 'update', 'updateInstalled', 'remove']);
     assert.equal(seen[5][1].workspace, workspace, 'a local skill is read from the instance workspace');
-    assert.equal(seen[5][1].target_uri, 'viking://agent/skills');
+    assert.equal(seen[5][1].target_uri, undefined, 'without a root it lands in the instance\'s own skills');
     assert.equal(changed, 4, 'each add, update and remove refreshes the catalog');
     // A bad name, or a removal that names nothing, fails before any call.
     await assert.rejects(() => call('openviking_skill_show', { name: '../etc' }), /name has an invalid format/);
     await assert.rejects(() => call('openviking_skill_remove', {}), (error) => error.code === 'invalid_input');
     assert.equal(seen.length, 9);
+  });
+
+  it('changes an account-shared skill only on the owner\'s line, and asks for that line', async (t) => {
+    const seen = [];
+    const ovSkills = {
+      add: async (input) => { seen.push(['add', input]); return { text: 'Skill added (1):', data: { changed: true, root_uri: 'viking://agent/skills/x' } }; },
+      update: async (input) => { seen.push(['update', input]); return { text: 'Skill updated (1):', data: { changed: true, root_uri: 'viking://agent/skills/x' } }; },
+      updateInstalled: async (input) => { seen.push(['updateInstalled', input]); return { text: 'Skill update: 1 updated, 0 skipped.', data: { changed: true } }; },
+      remove: async (input) => { seen.push(['remove', input]); return { text: 'Removed 1 skill(s): x.', data: { changed: true, removed: [] } }; },
+    };
+    const { call, inbound } = setup(t, { ids: ['lark'], ovSkills });
+    inbound({ messageId: 'om_owner123456789', senderId: OWNER.id });
+    inbound({ messageId: 'om_guest123456789', senderId: 'ou_guest12345678' });
+    const ownerLine = 'message:om_owner123456789';
+    const guestLine = 'message:om_guest123456789';
+    const shared = { target_uri: 'viking://agent/skills' };
+    const refuses = (promise, pattern) => assert.rejects(promise, (error) => error.code === 'not_owner' && pattern.test(error.message));
+
+    // The shared root is not one person's: no line, or a guest's line, is refused.
+    await refuses(call('openviking_skill_remove', { name: 'x', ...shared }), /decision_id/);
+    await refuses(call('openviking_skill_add', { data: '---\nname: x\ndescription: y\n---\n', ...shared }),
+      /decision_id/);
+    await refuses(call('openviking_skill_remove', { name: 'x', ...shared, decision_id: guestLine }), /not the owner/);
+    await refuses(call('openviking_skill_update', { name: 'x', from_source: true, ...shared, decision_id: guestLine }),
+      /not the owner/);
+    await refuses(call('openviking_skill_update', { ...shared, decision_id: guestLine }), /not the owner/);
+    assert.equal(seen.length, 0, 'nothing reached OpenViking for a refused change');
+
+    // The owner's line may change it, and the catalog is refreshed.
+    let changed = 0;
+    await call('openviking_skill_remove', { name: 'x', ...shared, decision_id: ownerLine })
+      .then((result) => { changed = result.data.changed ? 1 : 0; });
+    assert.equal(changed, 1);
+    assert.deepEqual(seen.map(([method]) => method), ['remove']);
+    assert.deepEqual(seen[0][1], { name: 'x', all: false, target_uri: 'viking://agent/skills' });
+
+    // The instance's own skills are the business of whoever is talking to it.
+    await call('openviking_skill_remove', { name: 'y', decision_id: guestLine });
+    assert.deepEqual(seen.at(-1), ['remove', { name: 'y', all: false, target_uri: undefined }]);
   });
 
   it('rechecks read authority after the remote answer', async (t) => {

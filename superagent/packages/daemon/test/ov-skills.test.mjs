@@ -154,7 +154,8 @@ describe('OpenViking skill client', () => {
     const updated = await instance.update({ name: 'tracked', from_source: true });
     assert.equal(updated.data.action, 'update');
     const put = ov.state.requests.find((entry) => entry.route === 'PUT /api/v1/skills/tracked');
-    assert.deepEqual(put.body, { wait: false, from_source: true });
+    // Every update names its root: a name alone can resolve to the shared one.
+    assert.deepEqual(put.body, { wait: false, from_source: true, target_uri: 'viking://~/skills' });
 
     await instance.update({ name: 'local', data: SKILL_MD('local', 'Changed') });
     assert.equal(ov.state.skills.get('viking://user/owner/skills/local').description, 'Changed');
@@ -168,9 +169,15 @@ describe('OpenViking skill client', () => {
     await assert.rejects(() => instance.updateInstalled({ names: ['local'] }),
       (error) => error.code === 'openviking_invalid_input');
 
-    const shared = await instance.update({ name: 'tracked', from_source: true, target_uri: 'viking://agent/skills' });
-    assert.equal(shared.text.includes('No skill'), false, 'a target root is sent, the server decides what exists there');
-    assert.equal(ov.state.requests.filter((entry) => entry.route === 'PUT /api/v1/skills/tracked').at(-1).body.target_uri, 'viking://agent/skills');
+    // A named root is the only place the update looks: a skill of that name in
+    // the other root is not silently taken.
+    seed(ov, { name: 'shared-tracked', root: OV_SHARED_SKILL_ROOT, source: { type: 'git', clone_url: 'https://github.com/o/s' } });
+    assert.match((await instance.update({ name: 'shared-tracked', from_source: true, target_uri: 'viking://agent/skills' })).text,
+      /Skill updated \(1\)/);
+    assert.equal(ov.state.requests.filter((entry) => entry.route === 'PUT /api/v1/skills/shared-tracked').at(-1).body.target_uri,
+      'viking://agent/skills');
+    await assert.rejects(() => instance.update({ name: 'tracked', from_source: true, target_uri: 'viking://agent/skills' }),
+      (error) => error.code === 'openviking_not_found');
   });
 
   it('removes one skill or every one in a root, and validates SKILL.md text', async (t) => {
@@ -202,6 +209,45 @@ describe('OpenViking skill client', () => {
     assert.match(invalid.text, /error: description is required/);
     assert.match(invalid.text, /warning: name differs from its directory/);
     assert.equal(ov.state.requests.filter((entry) => entry.route === 'POST /api/v1/skills/validate').at(-1).body.strict, true);
+  });
+
+  it('keeps a batch change inside the root it was given, and never falls through to a shared namesake', async (t) => {
+    const ov = await fakeOV(t);
+    seed(ov, { name: 'charts' });
+    seed(ov, { name: 'charts', root: OV_SHARED_SKILL_ROOT });
+    seed(ov, { name: 'shared-only', root: OV_SHARED_SKILL_ROOT, source: { type: 'git', clone_url: 'https://github.com/o/r' } });
+    const instance = client(ov);
+
+    // Removing every skill of the default root lists and deletes there only:
+    // the server's name lookup would otherwise fall through to the shared
+    // copy once the private one is gone.
+    const removed = await instance.remove({ all: true });
+    assert.equal(removed.data.total, 1);
+    const listings = ov.state.requests.filter((entry) => entry.route === 'GET /api/v1/skills'
+      && entry.query.target_uri === 'viking://~/skills');
+    assert.equal(listings.length, 1, 'the batch lists the instance\'s own root');
+    assert.deepEqual(ov.state.requests.filter((entry) => entry.route.startsWith('DELETE '))
+      .map((entry) => entry.query.target_uri), ['viking://~/skills']);
+    assert.equal(ov.state.skills.has('viking://user/owner/skills/charts'), false);
+    assert.equal(ov.state.skills.has('viking://agent/skills/charts'), true, 'the shared namesake stays');
+    assert.equal(ov.state.skills.has('viking://agent/skills/shared-only'), true);
+
+    // A batch refresh without a root has nothing left to do in the own root.
+    assert.match((await instance.updateInstalled()).text, /No skills to update/);
+    assert.equal(ov.state.requests.some((entry) => entry.route === 'GET /api/v1/skills'
+      && entry.query.target_uri === 'viking://agent/skills'), false);
+
+    // By name without a root it looks only in the own root, and says so.
+    await assert.rejects(() => instance.update({ name: 'shared-only', from_source: true }),
+      (error) => error.code === 'openviking_not_found' && /viking:\/\/~\/skills/.test(error.message));
+    assert.equal(ov.state.skills.get('viking://agent/skills/shared-only').description, 'Chart making');
+
+    // Naming the shared root is the one way to reach it, one skill or all.
+    assert.match((await instance.update({ name: 'shared-only', from_source: true, target_uri: 'viking://agent/skills' })).text,
+      /Skill updated \(1\)/);
+    assert.equal((await instance.names({ target_uri: 'viking://agent/skills' })).length, 2);
+    await instance.remove({ all: true, target_uri: 'viking://agent/skills' });
+    assert.equal([...ov.state.skills.keys()].filter((uri) => uri.startsWith('viking://agent/skills/')).length, 0);
   });
 
   it('refuses a source it cannot send, a wrong root and an empty query before any request', async (t) => {

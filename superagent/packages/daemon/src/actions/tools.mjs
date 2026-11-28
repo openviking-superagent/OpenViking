@@ -62,6 +62,12 @@ const RESPONSE_TO = {
   description: 'Optional event= of the earlier input this delivery fulfills. Defaults to decision_id. Attribution only; it must be from the same chat/thread or subject and no newer than decision_id.',
 };
 const DECISION_FIELDS = { decision_id: DECISION, decision_instance: DECISION_INSTANCE, response_to_id: RESPONSE_TO };
+// Changing the account-shared root is the owner's call: the Core checks it
+// from the authenticated line the tool names, never from the model's words.
+const SKILL_OWNER = {
+  decision_id: { ...DECISION, description: 'Required only with target_uri viking://agent/skills: the owner\'s line that asked for this change, as its event=. The Core checks from it that the sender is the owner; anyone else must ask the owner.' },
+  decision_instance: DECISION_INSTANCE,
+};
 const INTERIM = {
   interim: {
     type: 'boolean', default: false,
@@ -646,7 +652,7 @@ export const TOOLS = [
     name: 'openviking_skill_add',
     openviking: true,
     title: 'Add an OpenViking skill',
-    description: 'Install a skill into OpenViking from exactly one source: `data` (the full SKILL.md text, with YAML frontmatter naming it), `url` (a Git repository or a GitHub tree URL; every skill in it is installed unless `skills` names some), `file_path` (one workspace SKILL.md or .zip) or `directory` (a workspace skill directory, zipped and uploaded). Installing under an existing name replaces its SKILL.md and adds the new files; files the new version no longer has are kept. Ask the user before installing from a source they did not name. Without target_uri it goes into this instance\'s own viking://~/skills; viking://agent/skills shares it with the whole account.',
+    description: 'Install a skill into OpenViking from exactly one source: `data` (the full SKILL.md text, with YAML frontmatter naming it), `url` (a Git repository or a GitHub tree URL; every skill in it is installed unless `skills` names some), `file_path` (one workspace SKILL.md or .zip) or `directory` (a workspace skill directory, zipped and uploaded). Installing under an existing name replaces its SKILL.md and adds the new files; files the new version no longer has are kept. Ask the user before installing from a source they did not name. Without target_uri it goes into this instance\'s own viking://~/skills; viking://agent/skills shares it with the whole account and may be changed only on the owner\'s line (pass it as decision_id).',
     inputSchema: schema({
       data: { type: 'string', minLength: 1, maxLength: 100_000, description: 'The full SKILL.md text: YAML frontmatter with name and description, then the Markdown body.' },
       url: { type: 'string', maxLength: 4096, pattern: '^(?:https?://|git@|ssh://|git://)\\S+$', description: 'Git source: repository URL, or a GitHub .../tree/<ref>/<dir> URL. The server clones it itself.' },
@@ -656,6 +662,7 @@ export const TOOLS = [
       target_uri: SKILL_ROOT,
       list_only: { type: 'boolean', default: false, description: 'Describe the skills in the source without installing anything.' },
       wait: { type: 'boolean', default: false, description: 'Wait for processing to finish before answering; false answers once the server accepted it.' },
+      ...SKILL_OWNER,
     }),
     annotations: WRITE,
   },
@@ -663,7 +670,7 @@ export const TOOLS = [
     name: 'openviking_skill_update',
     openviking: true,
     title: 'Update an OpenViking skill',
-    description: 'Replace an installed skill\'s package. From its recorded Git source with from_source: true (the usual case for a skill installed from a repository, and the only way to refresh it). Otherwise give the new content: `data` (SKILL.md text, whose name must match), `url`, `file_path` or `directory`. With neither name nor from_source and no content, every installed skill with a Git source is refreshed and the rest reported as skipped. The whole package is replaced, so anything edited inside it before is overwritten.',
+    description: 'Replace an installed skill\'s package. From its recorded Git source with from_source: true (the usual case for a skill installed from a repository, and the only way to refresh it). Otherwise give the new content: `data` (SKILL.md text, whose name must match), `url`, `file_path` or `directory`. With neither name nor from_source and no content, every installed skill with a Git source is refreshed and the rest reported as skipped. The whole package is replaced, so anything edited inside it before is overwritten. It changes the instance\'s own skill unless target_uri names viking://agent/skills, whose skills only the owner\'s line may change (pass it as decision_id). Without a name, every skill of that root with a Git source is refreshed.',
     inputSchema: schema({
       name: SKILL_NAME,
       from_source: { type: 'boolean', default: false, description: 'Refetch the Git source recorded when the skill was installed.' },
@@ -673,6 +680,7 @@ export const TOOLS = [
       directory: { type: 'string', maxLength: 1024, description: 'One workspace directory holding SKILL.md at its top level.' },
       target_uri: SKILL_ROOT,
       wait: { type: 'boolean', default: false, description: 'Wait for processing to finish before answering.' },
+      ...SKILL_OWNER,
     }),
     annotations: WRITE,
   },
@@ -680,11 +688,12 @@ export const TOOLS = [
     name: 'openviking_skill_remove',
     openviking: true,
     title: 'Remove an OpenViking skill',
-    description: 'Remove an installed skill and its whole package. Pass its name, or all: true to remove every skill in that root. Only do this when the user asked for it.',
+    description: 'Remove an installed skill and its whole package. Pass its name, or all: true to remove every skill in that root; without target_uri it is this instance\'s own root, and viking://agent/skills only changes on the owner\'s line (pass it as decision_id). Only do this when the user asked for it.',
     inputSchema: schema({
       name: SKILL_NAME,
       all: { type: 'boolean', default: false, description: 'Remove every skill in the root instead of one.' },
       target_uri: SKILL_ROOT,
+      ...SKILL_OWNER,
     }),
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
   },

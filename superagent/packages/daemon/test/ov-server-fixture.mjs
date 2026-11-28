@@ -164,7 +164,9 @@ export async function fakeOV(t, { failParse = [], slowParse = [], apiKeys = {} }
       const named = url.pathname.match(/^\/api\/v1\/skills\/([^/]+)$/);
       if (named) {
         const name = decodeURIComponent(named[1]);
-        const root = rootOf(url.searchParams.get('target_uri'));
+        // A PUT names its root in the body (UpdateSkillRequest.target_uri);
+        // GET and DELETE name it in the query.
+        const root = rootOf(request.method === 'PUT' ? body?.target_uri : url.searchParams.get('target_uri'));
         const uri = `${root}/${name}`;
         const skill = state.skills.get(uri);
         if (request.method === 'GET') {
