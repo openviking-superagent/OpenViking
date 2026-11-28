@@ -14,6 +14,9 @@ BINARY="${1:?binary}"
 VERSION="${2:?version}"
 OUT="${3:?output directory}"
 ARCH="${ARCH:-amd64}"
+# The WebKitGTK the binary was built against: 4.1 (default) or 4.0 (build with
+# -tags webkit40). The dependency has to name the same one.
+WEBKIT="${WEBKIT:-4.1}"
 NAME="ovsa-desktop"
 
 ROOT=$(mktemp -d)
@@ -41,7 +44,7 @@ Version: $VERSION
 Section: utils
 Priority: optional
 Architecture: $ARCH
-Depends: libgtk-3-0, libwebkit2gtk-4.1-0
+Depends: libgtk-3-0, libwebkit2gtk-${WEBKIT}-0
 Maintainer: OpenViking SuperAgent <openviking@bytedance.com>
 Description: Desktop shell for OpenViking SuperAgent
  One window that opens the console of the OpenViking SuperAgent installed on

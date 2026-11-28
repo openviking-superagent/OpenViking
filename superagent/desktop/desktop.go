@@ -107,6 +107,7 @@ func newDesktop(opts desktopOptions) (*Desktop, error) {
 		return nil, err
 	}
 	d.adminURL = "http://" + listener.Addr().String() + "/"
+	logger.Printf("shell page on %s", d.adminURL)
 	d.admin = &http.Server{Handler: d.routes(), ReadHeaderTimeout: 5 * time.Second}
 	go func() {
 		if err := d.admin.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -219,6 +220,7 @@ func (d *Desktop) check() {
 	d.state.URL = url
 	d.mu.Unlock()
 	d.set(phaseReady, "已连接", "")
+	d.logf("console: %s", url)
 	version := d.version()
 	d.mu.Lock()
 	d.state.Version = version
