@@ -56,15 +56,16 @@ func TestSnapshotHidesURLUntilReady(t *testing.T) {
 	}
 }
 
-// The installer is the published one-line command for this platform, never a
-// second copy of the install logic.
-func TestInstallerCommand(t *testing.T) {
-	command := installerCommand()
-	if command == "" {
-		t.Fatal("every platform answers with an installer command")
+// The published tree is the default, and an explicit variable wins so a
+// mirror or a test can answer instead.
+func TestDownloadBase(t *testing.T) {
+	t.Setenv("OV_SUPERAGENT_DOWNLOAD_BASE", "")
+	if got := base(); !strings.Contains(got, "ovrelease.tos-cn-beijing.volces.com/superagent") {
+		t.Fatalf("default download base must be the published tree, got %q", got)
 	}
-	if want := "ovrelease.tos-cn-beijing.volces.com/superagent"; !strings.Contains(command, want) {
-		t.Fatalf("installer must come from the published tree %q, got %q", want, command)
+	t.Setenv("OV_SUPERAGENT_DOWNLOAD_BASE", "http://127.0.0.1:9/mirror/")
+	if got := base(); got != "http://127.0.0.1:9/mirror" {
+		t.Fatalf("an explicit base must win and lose its trailing slash, got %q", got)
 	}
 }
 

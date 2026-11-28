@@ -8,8 +8,10 @@ holds, so the desktop app and the terminal show the same instance.
 ## What it does
 
 1. Resolves the home directory (`OV_SUPERAGENT_HOME`, else `~/.ov-superagent`).
-2. If no release is installed, offers the platform's published installer and
-   runs it in a terminal.
+2. If no release is installed, downloads the published installer and runs it
+   without a console window, showing its progress lines in the page. The
+   installer keeps its own layout, so `ov-superagent upgrade` and the updater
+   keep working; only its setup step is skipped, because the shell drives that.
 3. If a release is installed but `config.json` is missing, runs
    `ov-superagent setup` in a terminal.
 4. Otherwise runs `ov-superagent start`, waits for `http://127.0.0.1:3737/ready`,
@@ -54,11 +56,11 @@ prerelease of the fork.
 
 ## What it does not do yet
 
-- No in-app setup wizard. Setup is the real `ov-superagent setup` in a terminal,
-  so a first run is two windows, not one. Moving it into the console needs the
-  setup flow split into a headless API first (see `docs/desktop.md`).
-- No bundled runtime. The installer therefore needs the machine to have
-  reached the published tree once; a machine with no runtime runs the official
-  installer, which downloads it.
+- No in-app setup wizard yet. Installation happens in the window; setup still
+  opens the real `ov-superagent setup` in a terminal, because creating a bot
+  and authorizing it is a scan. Moving it inside needs the setup flow split
+  into a state machine first (see `docs/desktop.md`).
+- No bundled runtime: the window installs from the published tree, so the
+  machine needs network access to it once.
 - No tray icon, no autostart toggle, no self-update of the shell.
 - macOS builds are ad-hoc signed, not notarized.

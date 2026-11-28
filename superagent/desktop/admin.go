@@ -79,15 +79,10 @@ func (d *Desktop) action(name string) error {
 
 	switch name {
 	case "install":
-		d.set(phaseNeedsInstall, "安装程序已在终端里打开", "按终端里的提示完成安装；装完 setup 也在同一个终端里。")
-		if err := openTerminal(installerCommand()); err != nil {
-			d.set(phaseError, "打不开终端", err.Error())
-			return nil
-		}
-		go d.waitFor(10 * time.Minute, func() bool { return d.installed() && d.configured() })
+		d.install()
 		return nil
 	case "setup":
-		d.set(phaseNeedsSetup, "配置向导已在终端里打开", "按终端里的提示完成配置；保存后这个窗口会自动继续。")
+		d.set(phaseNeedsSetup, "配置向导已在终端里打开", "按终端里的提示完成配置（建机器人时要扫码）；保存后这个窗口会自动继续。")
 		if err := openTerminal(shellQuote(d.launcher()) + " setup"); err != nil {
 			d.set(phaseError, "打不开终端", err.Error())
 			return nil
@@ -202,6 +197,7 @@ const page = `<!doctype html>
 const actions = {
   'needs-install': [['install','安装 OpenViking SuperAgent','primary'],['retry','重新检查']],
   'needs-setup':   [['setup','打开配置向导','primary'],['retry','重新检查']],
+  'installing':    [['retry','重新检查']],
   'starting':      [['retry','重新检查']],
   'error':         [['start','重试启动','primary'],['logs','打开日志'],['open','在浏览器中打开']],
   'ready':         [['open','在浏览器中打开'],['logs','打开日志'],['start','重启服务']]
@@ -219,7 +215,7 @@ async function tick() {
   document.getElementById('detail').textContent = state.detail || '';
   document.getElementById('home').textContent = state.home || '';
   document.getElementById('version').textContent = state.version || '';
-  document.getElementById('dot').className = 'dot' + (state.phase === 'checking' || state.phase === 'starting' ? ' spin' : '');
+  document.getElementById('dot').className = 'dot' + (['checking','installing','starting'].includes(state.phase) ? ' spin' : '');
   const box = document.getElementById('actions');
   box.textContent = '';
   for (const [name, label, kind] of (actions[state.phase] || [['retry','重新检查']])) {

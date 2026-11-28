@@ -28,6 +28,7 @@ const (
 	phaseChecking     = "checking"
 	phaseNeedsInstall = "needs-install"
 	phaseNeedsSetup   = "needs-setup"
+	phaseInstalling   = "installing"
 	phaseStarting     = "starting"
 	phaseReady        = "ready"
 	phaseError        = "error"
@@ -211,11 +212,11 @@ func (d *Desktop) configured() bool {
 func (d *Desktop) check() {
 	d.set(phaseChecking, "正在检查本机安装", "")
 	if !d.installed() {
-		d.set(phaseNeedsInstall, "这台机器还没有安装 OpenViking SuperAgent", "安装会在终端里进行，装完会自动进入 setup。")
+		d.set(phaseNeedsInstall, "这台机器还没有安装 OpenViking SuperAgent", "点下面的按钮，安装包会下载到这里并显示进度，不需要开终端。")
 		return
 	}
 	if !d.configured() {
-		d.set(phaseNeedsSetup, "运行时已安装，还没有完成配置", "setup 会在终端里进行；完成后这个窗口会自动打开控制台。")
+		d.set(phaseNeedsSetup, "运行时已安装，还没有完成配置", "配置要建机器人、扫码授权，现在还需要在终端里跑一次 setup；完成后这个窗口会自动打开控制台。")
 		return
 	}
 	if d.target == "" {
@@ -337,15 +338,6 @@ func (d *Desktop) version() string {
 		text = text[:80]
 	}
 	return text
-}
-
-// installerCommand is the one-line installer this platform publishes. The
-// shell runs it in a terminal so its progress and its setup stay visible.
-func installerCommand() string {
-	if runtime.GOOS == "windows" {
-		return "irm " + downloadBase + "/install.ps1 | iex"
-	}
-	return "curl -fsSL " + downloadBase + "/install.sh | sh"
 }
 
 // firstLine keeps detail text short enough for the page's one line.
