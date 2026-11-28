@@ -48,7 +48,7 @@ jobs:
         run: |
           go vet ./...
           go test ./...
-          go build -trimpath -ldflags "-s -w" -o "${{ runner.temp }}\windows\ovsa-desktop.exe" .
+          go build -trimpath -ldflags "-s -w -H=windowsgui" -o "${{ runner.temp }}\windows\ovsa-desktop.exe" .
       - name: Install NSIS
         run: choco install nsis --no-progress -y
       - name: Build the installer

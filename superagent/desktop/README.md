@@ -37,7 +37,7 @@ installer publishes, and it keeps living in `~/.ov-superagent`.
 ```sh
 cd superagent/desktop
 go test ./...
-GOOS=windows CGO_ENABLED=0 go build -o ovsa-desktop.exe .     # WebView2, pure Go
+GOOS=windows CGO_ENABLED=0 go build -ldflags "-H=windowsgui" -o ovsa-desktop.exe .   # WebView2, pure Go
 CGO_ENABLED=1 go build -o ovsa-desktop .                      # macOS, Linux (GTK + WebKitGTK)
 
 sh packaging/linux/build-deb.sh ./ovsa-desktop 0.1.0 dist
